@@ -1,0 +1,12 @@
+name: server
+version: 0.1.0
+
+dependencies:
+  validator:
+    github: nicolab/crystal-validator
+  pg:
+    github: will/crystal-pg
+  awscr-s3:
+    github: taylorfinnell/awscr-s3
+
+license: MIT
