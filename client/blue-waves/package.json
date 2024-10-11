@@ -1,0 +1,22 @@
+{
+  "name": "blue-waves",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.14.7",
+    "@tanstack/solid-query": "^5.59.10",
+    "ky": "^1.7.2",
+    "solid-js": "^1.9.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "vite": "^5.4.8",
+    "vite-plugin-solid": "^2.10.2"
+  }
+}
