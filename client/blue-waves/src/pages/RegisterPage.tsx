@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { HTTPError } from "ky";
-import ky from "ky"; 
+import ky from "ky";
 
 const RegisterPage = () => {
     const [email, setEmail] = createSignal("");
@@ -43,28 +43,30 @@ const RegisterPage = () => {
     }
 
     return (
-        <>
-            <h1>Register</h1>
-            <form onSubmit={registerUser}>
-            <div>
-                <label for="email"> </label>
-                <input id="email" type="email" onChange={(event) => setEmail(event.target.value)} required/>
+        <div class="flex justify-center items-center w-screen h-screen">
+            <div class="flex flex-col items-center border-2 p-10" style="width: 40rem; height: 42rem;">
+                <h1 class="text-2xl font-bold mb-4">Register</h1>
+                <form onSubmit={registerUser} class="flex flex-col items-center">
+                    <div class="flex flex-col m-4 text-xl">
+                        <label for="email">Email</label>
+                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => setEmail(event.target.value)} required/>
+                    </div>
+                    <div class="flex flex-col m-4 text-xl">
+                        <label for="password">Password</label>
+                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => setPassword(event.target.value)} required/>
+                    </div>
+                    <div class="flex flex-col m-4 text-xl">
+                        <label for="firstName">First Name</label>
+                        <input id="firstName" class="border-2 w-96 h-10" onChange={(event) => setFirstName(event.target.value)} required/>
+                    </div>
+                    <div class="flex flex-col m-4 text-xl">
+                        <label for="lastName">Last Name</label>
+                        <input id="lastName" class="border-2 w-96 h-10" onChange={(event) => setLastName(event.target.value)} required/>
+                    </div>
+                    <button class="border-2 rounded p-2 mt-8 text-lg">Create Account</button>
+                </form>
             </div>
-            <div>
-                <label for="password"> </label>
-                <input id="password" type="password" onChange={(event) => setPassword(event.target.value)} required/>
-            </div>
-            <div>
-                <label for="firstName"> </label>
-                <input id="firstName" onChange={(event) => setFirstName(event.target.value)} required/>
-            </div>
-            <div>
-                <label for="lastName"> </label>
-                <input id="lastName" onChange={(event) => setLastName(event.target.value)} required/>
-            </div>
-            <button>Create Account</button>
-            </form>
-        </>
+        </div>
     )
 }
 

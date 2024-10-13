@@ -1,6 +1,7 @@
 import { lazy } from 'solid-js';
 import { render } from 'solid-js/web'
 import { Router } from "@solidjs/router"
+import "./index.css"
 
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 
