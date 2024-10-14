@@ -75,4 +75,31 @@ module Validators::UserValidator
     # Return validated data
     return data
   end
+
+  # Validates POST requests sent to api/v1/users/login when logging into an account.
+  #
+  # Returns the parsed request body as a LoginRequest struct if validation is successful, and nil otherwise.
+  # Upon error an appropriate message is written to the response body and a status code of 400 is set accordingly.
+  #
+  # ```
+  # require "validators/user_validator"
+  # include "./Validators::UserValidator"
+  #
+  # data = validate_login_request context
+  # if !data.nil?
+  #   handle request...
+  # end
+  # ```
+  def validate_login_request(context : HTTP::Server::Context) : (LoginRequest | Nil)
+    # Parse JSON body
+    begin
+      data = LoginRequest.from_json(context.request.body.as(IO))
+    rescue
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+
+    # Return validated data
+    return data
+  end
 end
