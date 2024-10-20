@@ -11,8 +11,6 @@ const LoginPage = () => {
 
     const loginQuery = createQuery(() => ({
         queryKey: ["Login"],
-        enabled: false,
-        retry: false,
         queryFn: async () => {
             // Login user
             await api.post("users/login", {

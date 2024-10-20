@@ -13,8 +13,6 @@ const RegisterPage = () => {
 
     const registerQuery = createQuery(() => ({
         queryKey: ["Register"],
-        enabled: false,
-        retry: false,
         queryFn: async () => {
             // Register user
             await api.post("users", {
