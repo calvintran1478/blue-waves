@@ -1,7 +1,7 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import ky from "ky";
+import { api } from "../index.tsx";
 
 const RegisterPage = () => {
     const [email, setEmail] = createSignal("");
@@ -17,21 +17,12 @@ const RegisterPage = () => {
         retry: false,
         queryFn: async () => {
             // Register user
-            await ky.post("http://localhost:8080/api/v1/users", {
+            await api.post("users", {
                 json: {
                     email: email(),
                     password: password(),
                     first_name: firstName(),
                     last_name: lastName()
-                },
-                hooks: {
-                    beforeError: [
-                        async(error) => {
-                            // Parse error message from response body
-                            error.message = (await error.response.json()).error;
-                            return error;
-                        }
-                    ]
                 }
             });
 

@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import ky from "ky";
+import { api } from "../index.tsx";
 
 const LoginPage = () => {
     const [email, setEmail] = createSignal("");
@@ -15,19 +15,10 @@ const LoginPage = () => {
         retry: false,
         queryFn: async () => {
             // Login user
-            await ky.post("http://localhost:8080/api/v1/users/login", {
+            await api.post("users/login", {
                 json: {
                     email: email(),
                     password: password()
-                },
-                hooks: {
-                    beforeError: [
-                        async(error) => {
-                            // Parse error message from response body
-                            error.message = (await error.response.json()).error;
-                            return error;
-                        }
-                    ]
                 }
             });
 

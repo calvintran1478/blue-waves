@@ -2,6 +2,7 @@ import { lazy } from 'solid-js';
 import { render } from 'solid-js/web'
 import { Router } from "@solidjs/router"
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query'; 
+import ky from "ky";
 import "./index.css"
 
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -19,6 +20,19 @@ const routes = [
 ]
 
 const queryClient = new QueryClient();
+
+export const api = ky.create({
+    prefixUrl: "http://localhost:8080/api/v1",
+    hooks: {
+        beforeError: [
+            async(error) => {
+                // Parse error message from response body
+                error.message = (await error.response.json()).error;
+                return error;
+            }
+        ]
+    }
+});
 
 render(
     () => (
