@@ -1,6 +1,6 @@
-import { lazy } from 'solid-js';
-import { render } from 'solid-js/web'
-import { Router } from "@solidjs/router"
+import { lazy } from "solid-js";
+import { render } from "solid-js/web";
+import { Router } from "@solidjs/router";
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query'; 
 import ky from "ky";
 import "./index.css"
@@ -34,7 +34,7 @@ export const api = ky.create({
         beforeError: [
             async(error) => {
                 // Parse error message from response body
-                error.message = (await error.response.json()).error;
+                error.message = (await error.response.json() as { error: string }).error;
                 return error;
             }
         ]

@@ -61,7 +61,7 @@ const RegisterPage = () => {
                 </form>
                 <Show when={registerQuery.isError}>
                     <div class="flex justify-center items-center border-2 p-4 m-6 w-96 h-12">
-                        <p >{registerQuery.error.message}</p>
+                        <p>{registerQuery.error!.message}</p>
                     </div>
                 </Show>
             </div>

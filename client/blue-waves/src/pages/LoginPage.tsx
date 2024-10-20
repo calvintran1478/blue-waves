@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
@@ -49,7 +49,7 @@ const LoginPage = () => {
                 </form>
                 <Show when={loginQuery.isError}>
                     <div class="flex justify-center items-center border-2 p-4 m-6 w-96 h-12">
-                        <p >{loginQuery.error.message}</p>
+                        <p>{loginQuery.error!.message}</p>
                     </div>
                 </Show>
             </div>
