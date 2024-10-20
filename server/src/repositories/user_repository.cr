@@ -23,4 +23,18 @@ class Repositories::UserRepository < Repositories::Repository
   def create(email : String, password : Crypto::Bcrypt::Password, first_name : String, last_name : String) : Nil
     @db.exec "INSERT INTO users (email, password, first_name, last_name) VALUES ($1, $2, $3, $4)", email, password, first_name, last_name
   end
+
+  # Returns the hashed password of a user.
+  #
+  # ```
+  # user_repository.get_login_password("user@email.com") # => "hashed_password"
+  # ```
+  def get_login_password(email : String) : (Crypto::Bcrypt::Password | Nil)
+    begin
+      password = @db.query_one "SELECT password FROM users WHERE email=$1", email, as: String
+      return Crypto::Bcrypt::Password.new(password)
+    rescue DB::NoResultsError
+      return nil
+    end
+  end
 end
