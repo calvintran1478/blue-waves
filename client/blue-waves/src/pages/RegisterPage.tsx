@@ -1,6 +1,6 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { HTTPError } from "ky";
+import { createQuery } from "@tanstack/solid-query";
 import ky from "ky";
 
 const RegisterPage = () => {
@@ -11,11 +11,11 @@ const RegisterPage = () => {
 
     const navigate = useNavigate();
 
-    const registerUser = async (event: Event) => {
-        // Prevent refresh
-        event.preventDefault();
-
-        try {
+    const registerQuery = createQuery(() => ({
+        queryKey: ["Register"],
+        enabled: false,
+        retry: false,
+        queryFn: async () => {
             // Register user
             await ky.post("http://localhost:8080/api/v1/users", {
                 json: {
@@ -23,23 +23,28 @@ const RegisterPage = () => {
                     password: password(),
                     first_name: firstName(),
                     last_name: lastName()
+                },
+                hooks: {
+                    beforeError: [
+                        async(error) => {
+                            // Parse error message from response body
+                            error.message = (await error.response.json()).error;
+                            return error;
+                        }
+                    ]
                 }
-            })
+            });
 
             // Navigate to login page
             navigate("/login");
 
-        } catch(error) {
-            // Cast error to appropriate type
-            const httpError = error as HTTPError;
-
-            // Handle error based on status code
-            if (httpError.response.status === 400) {
-                console.log("400!");
-            } else if (httpError.response.status === 409) {
-                console.log("409!");
-            }
+            return null;
         }
+    }));
+
+    const registerUser = (event: Event) => {
+        event.preventDefault();
+        registerQuery.refetch();
     }
 
     return (
@@ -63,8 +68,13 @@ const RegisterPage = () => {
                         <label for="lastName">Last Name</label>
                         <input id="lastName" class="border-2 w-96 h-10" onChange={(event) => setLastName(event.target.value)} required/>
                     </div>
-                    <button class="border-2 rounded p-2 mt-8 text-lg">Create Account</button>
+                    <button class="border-2 rounded p-2 mt-4 text-lg" disabled={registerQuery.isFetching}>Create Account</button>
                 </form>
+                <Show when={registerQuery.isError}>
+                    <div class="flex justify-center items-center border-2 p-4 m-6 w-96 h-12">
+                        <p >{registerQuery.error.message}</p>
+                    </div>
+                </Show>
             </div>
         </div>
     )
