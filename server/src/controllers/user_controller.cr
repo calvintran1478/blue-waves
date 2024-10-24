@@ -100,7 +100,7 @@ class Controllers::UserController < Controllers::Controller
     access_claims = {user_id: data.email, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
     access_token = JWT.encode(access_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
-    refresh_claims = {user_id: data.email, token_family_id: token_family_id.to_s, sequence_nuber: 1, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
+    refresh_claims = {user_id: data.email, token_family_id: token_family_id.to_s, sequence_number: 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
     refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
