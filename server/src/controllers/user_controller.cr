@@ -29,6 +29,8 @@ class Controllers::UserController < Controllers::Controller
       register_user(context)
     when {"POST", "/login"}
       login_user(context)
+    when {"GET", "/token"}
+      refresh_token(context)
     else
       context.response.status = HTTP::Status::NOT_FOUND
     end
@@ -119,6 +121,69 @@ class Controllers::UserController < Controllers::Controller
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
     context.response.output << LoginResponse.new(
+      access_token: access_token
+    ).to_json
+  end
+
+  def refresh_token(context : HTTP::Server::Context) : Nil
+    # Parse claims if token is not expired
+    begin
+      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, ENV["API_SECRET"], JWT::Algorithm::HS256)
+      user_id = payload["user_id"].as_s
+      token_family_id = payload["token_family_id"].as_s
+      sequence_number = payload["sequence_number"].as_i
+    rescue
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Check that the user exists in the database
+    user_exists = @user_repository.exists(user_id)
+    unless user_exists
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Check that the token family exists
+    expected_sequence_number = @auth_db.get(token_family_id)
+    if expected_sequence_number.nil?
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Check the sequence number is as expected
+    if (sequence_number != expected_sequence_number.to_i)
+      @auth_db.del(token_family_id)
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Update sequence number to reflect new token in the token family
+    @auth_db.set(token_family_id, sequence_number + 1, ex: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i * 3600)
+
+    # Generate access token and refresh token pair
+    access_claims = {user_id: user_id, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
+    access_token = JWT.encode(access_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
+
+    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: sequence_number + 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
+    refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
+
+    # Set http-only cookie containing refresh token
+    cookie = HTTP::Cookie.new(
+      name: "refresh-token",
+      value: refresh_token,
+      max_age: Time::Span.new(hours: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i),
+      http_only: true,
+      secure: true,
+      samesite: HTTP::Cookie::SameSite::Strict
+    )
+
+    context.response.cookies << cookie
+
+    # Send access token
+    context.response.content_type = "application/json"
+    context.response.status = HTTP::Status::OK
+    context.response.output << RefreshTokenResponse.new(
       access_token: access_token
     ).to_json
   end
