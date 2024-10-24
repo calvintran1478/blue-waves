@@ -54,7 +54,7 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Hash password
-    hashed_password = Crypto::Bcrypt::Password.create data.password, 10
+    hashed_password = Crypto::Bcrypt::Password.create data.password, ENV["BCRYPT_COST"].to_i
 
     # Register user into the database
     @user_repository.create(data.email, hashed_password, data.first_name, data.last_name)
