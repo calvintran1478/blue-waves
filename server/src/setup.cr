@@ -18,7 +18,8 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
   db.exec(
     <<-SQL
       CREATE TABLE users (
-        email VARCHAR PRIMARY KEY,
+        user_id VARCHAR PRIMARY KEY,
+        email VARCHAR UNIQUE,
         password VARCHAR NOT NULL CHECK (length(password) >= 8),
         first_name VARCHAR NOT NULL CHECK (first_name <> ''),
         last_name VARCHAR NOT NULL CHECK (last_name <> '')
