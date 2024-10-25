@@ -69,8 +69,9 @@ class Controllers::UserController < Controllers::Controller
     ).to_json
   end
 
-  # Logs in the user by giving them an access token they can use to authenticate
-  # on protected endpoints
+  # Logs in the user by providing an access token they can use to authenticate
+  # on protected endpoints. Also provides a refresh token that can be used to obtain
+  # new access tokens.
   #
   # Method: POST
   # Path: /api/v1/users/login
@@ -125,6 +126,11 @@ class Controllers::UserController < Controllers::Controller
     ).to_json
   end
 
+  # Returns a new refresh token access token pair the user can use to authenticate
+  # on protected endpoints. The user must have a valid refresh token cookie.
+  #
+  # Method: GET
+  # Path: /api/v1/users/token
   def refresh_token(context : HTTP::Server::Context) : Nil
     # Parse claims if token is not expired
     begin
