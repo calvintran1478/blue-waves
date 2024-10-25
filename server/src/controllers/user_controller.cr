@@ -46,7 +46,7 @@ class Controllers::UserController < Controllers::Controller
     return if data.nil?
 
     # Check if a user with the given email already exists
-    user_exists = @user_repository.exists(data.email)
+    user_exists = @user_repository.exists_by_email(data.email)
     if user_exists
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << ExceptionResponse.new("User with email already exists").to_json
@@ -80,7 +80,7 @@ class Controllers::UserController < Controllers::Controller
     return if data.nil?
 
     # Look up user in database
-    password = @user_repository.get_login_password(data.email)
+    user_id, password = @user_repository.get_login_password(data.email)
     if password.nil?
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << ExceptionResponse.new("User with email not found").to_json
@@ -99,10 +99,10 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id.to_s, 1, ex: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i * 3600)
 
     # Generate access token and refresh token pair
-    access_claims = {user_id: data.email, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
+    access_claims = {user_id: user_id, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
     access_token = JWT.encode(access_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
-    refresh_claims = {user_id: data.email, token_family_id: token_family_id.to_s, sequence_number: 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
+    refresh_claims = {user_id: user_id, token_family_id: token_family_id.to_s, sequence_number: 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
     refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
@@ -138,7 +138,7 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Check that the user exists in the database
-    user_exists = @user_repository.exists(user_id)
+    user_exists = @user_repository.exists_by_id(user_id)
     unless user_exists
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
