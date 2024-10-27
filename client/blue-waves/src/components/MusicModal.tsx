@@ -1,6 +1,7 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const MusicModal = (props: { token: string, closeCallback: () => void }) => {
     const [title, setTitle] = createSignal("");
@@ -37,7 +38,7 @@ const MusicModal = (props: { token: string, closeCallback: () => void }) => {
         addMusicQuery.refetch();
     }
 
-    return(
+    return (
         <div class="p-6 bg-white" style="width: 40rem; height: 24rem;">
             <div class="flex flex-row-reverse">
                 <button onClick={props.closeCallback}>close</button>
@@ -52,7 +53,12 @@ const MusicModal = (props: { token: string, closeCallback: () => void }) => {
                     <input id="artist" class="border-2 m-2 w-60 h-8" onChange={(event) => setArtist(event.target.value)} required/>
                 </div>
                 <input ref={musicInput} type="file" id="addFile" class="w-80 m-6 mb-8" required/>
-                <button class="border-2 rounded p-2">Add music</button>
+                <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={addMusicQuery.isFetching}>
+                    <span class="mr-2">Add music</span>
+                    <Show when={addMusicQuery.isFetching}>
+                        <LoadingSpinner/>
+                    </Show>
+                </button>
             </form>
         </div>
     )
