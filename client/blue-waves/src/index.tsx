@@ -8,6 +8,7 @@ import "./index.css"
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
+const LibraryPage = lazy(() => import("./pages/LibraryPage"));
 
 const routes = [
     {
@@ -21,6 +22,10 @@ const routes = [
     {
         path: "/home",
         component: HomePage
+    },
+    {
+        path: "/library",
+        component: LibraryPage
     }
 ]
 
