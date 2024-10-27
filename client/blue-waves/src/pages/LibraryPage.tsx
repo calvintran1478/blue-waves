@@ -10,7 +10,7 @@ const LibraryPage = () => {
 
     const [token] = createResource(async () => {
         try {
-            const tokenResponse = await api.get("users/token", { credentials: "include" }).json<{"access_token": String}>();
+            const tokenResponse = await api.get("users/token", { credentials: "include" }).json<{"access_token": string}>();
             return tokenResponse["access_token"];
         } catch (error) {
             navigate("/login");

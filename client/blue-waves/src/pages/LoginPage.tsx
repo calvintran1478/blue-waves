@@ -17,7 +17,8 @@ const LoginPage = () => {
                 json: {
                     email: email(),
                     password: password()
-                }
+                },
+                credentials: "include"
             });
 
             // Navigate to home page
