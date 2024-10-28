@@ -27,4 +27,22 @@ module Schemas::MusicSchemas
     def initialize(@title : String, @artist : String)
     end
   end
+
+  # Response body schema for server responses to /api/v1/users/music GET requests.
+  #
+  # Represents metadata for all music files in the user's collection
+  struct GetMusicResponse
+    include JSON::Serializable
+
+    def initialize(@music : Array(MusicMetadata))
+    end
+  end
+
+  # Represents metadata for a single music file in the user's collection
+  struct MusicMetadata
+    include JSON::Serializable
+
+    def initialize(@title : String, @artist : String)
+    end
+  end
 end

@@ -24,6 +24,8 @@ class Controllers::MusicController < Controllers::Controller
     case {context.request.method, path}
     when {"POST", ""}
       add_music(context)
+    when {"GET", ""}
+      get_music(context)
     else
       context.response.status = HTTP::Status::NOT_FOUND
     end
@@ -32,7 +34,7 @@ class Controllers::MusicController < Controllers::Controller
   # Adds a music file to the user's collection
   #
   # Method: POST
-  # Path: /api/v1/users
+  # Path: /api/v1/users/music
   def add_music(context : HTTP::Server::Context) : Nil
     # Get user
     user_id = Utils::Auth.get_user(context)
@@ -62,6 +64,26 @@ class Controllers::MusicController < Controllers::Controller
     context.response.output << AddMusicResponse.new(
       title: data.title,
       artist: data.artist,
+    ).to_json
+  end
+
+  # Retreives the title and artist for each music file in the user's collection
+  #
+  # Method: GET
+  # Path: /api/v1/users/music
+  def get_music(context : HTTP::Server::Context) : Nil
+    # Get user
+    user_id = Utils::Auth.get_user(context)
+    return if user_id.nil?
+
+    # Fetch music data
+    music_items = @music_repository.list(user_id)
+
+    # Send music data
+    context.response.content_type = "application/json"
+    context.response.status = HTTP::Status::OK
+    context.response.output << GetMusicResponse.new(
+      music: music_items
     ).to_json
   end
 end

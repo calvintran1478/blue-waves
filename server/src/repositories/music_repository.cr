@@ -1,12 +1,15 @@
 require "db"
 require "awscr-s3"
 require "./repository"
+require "../schemas/music_schemas"
 
 # Provides an easy-to-use interface for accessing the music table in the database.
 #
 # Contains a set of methods for working with the music table. All queries made to the
 # music table should be made though a MusicRepository object.
 class Repositories::MusicRepository < Repositories::Repository
+  include Schemas::MusicSchemas
+
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
     @music_uploader = Awscr::S3::FileUploader.new(@music_db)
   end
@@ -33,5 +36,23 @@ class Repositories::MusicRepository < Repositories::Repository
     File.open(file.path, "r") do |music_file|
       @music_uploader.upload("blue-waves", "#{user_id}/#{title}", music_file)
     end
+  end
+
+  # Lists all titles and artists from music files in the user's collection
+  #
+  # ```
+  # music_repository.list("user_id") # => [Schemas::MusicSchemas::MusicMetadata(@title="Title1", @artist="Artist1"), ...]
+  # ```
+  def list(user_id : String) : Array(MusicMetadata)
+    # Fetch music information
+    music_items = Array(MusicMetadata).new
+    @db.query("SELECT title, artist FROM music WHERE user_id=$1", user_id) do |rs|
+      rs.each do
+        title, artist = rs.read(String, String)
+        music_items << MusicMetadata.new(title, artist)
+      end
+    end
+
+    return music_items
   end
 end
