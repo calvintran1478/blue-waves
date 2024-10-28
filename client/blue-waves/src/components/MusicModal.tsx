@@ -1,9 +1,11 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, Resource, Setter, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-const MusicModal = (props: { token: string, closeCallback: () => void }) => {
+type musicEntriesType = {title: string, artist: string}[];
+
+const MusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<musicEntriesType>, setMusicEntries: Setter<musicEntriesType | undefined>}) => {
     const [title, setTitle] = createSignal("");
     const [artist, setArtist] = createSignal("");
 
@@ -25,6 +27,11 @@ const MusicModal = (props: { token: string, closeCallback: () => void }) => {
                 },
                 body: data
             });
+
+            // Add music entry to list
+            const newMusicEntries = [...props.musicEntries()!];
+            newMusicEntries!.push({"title": title(), "artist": artist()});
+            props.setMusicEntries(newMusicEntries);
 
             // Close modal
             props.closeCallback();

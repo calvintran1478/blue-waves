@@ -1,6 +1,5 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { until } from "@solid-primitives/promise";
 import { api } from "../index.tsx";
 import MusicModal from "../components/MusicModal.tsx";
 
@@ -18,10 +17,7 @@ const LibraryPage = () => {
         }
     });
 
-    const [musicEntries] = createResource(async () => {
-        // Wait until access token is fetched
-        await until(() => token() !== undefined)
-
+    const [musicEntries, modifyMusicEntries] = createResource(token, async () => {
         // Get music entries
         const musicResponse = await api.get("users/music", {
             headers: {
@@ -51,7 +47,7 @@ const LibraryPage = () => {
             </div>
             <Show when={showMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <MusicModal token={token() as string} closeCallback={() => setShowMusicModal(false)}/>
+                    <MusicModal token={token() as string} closeCallback={() => setShowMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate}/>
                 </div>
             </Show>
         </div>
