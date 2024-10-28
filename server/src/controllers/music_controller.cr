@@ -55,8 +55,8 @@ class Controllers::MusicController < Controllers::Controller
     # Add music to the user's collection
     @music_repository.create(data.title, data.artist, data.file, user_id)
 
-    # Delete temporary file
-    data.file.delete
+    # Close file IO
+    data.file.close
 
     # Send success response
     context.response.content_type = "application/json"

@@ -28,14 +28,12 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.create("music_title", "artist", music_file, "user_id")
   # ```
-  def create(title : String, artist : String, file : File, user_id : String) : Nil
+  def create(title : String, artist : String, file : IO::Memory, user_id : String) : Nil
     # Store metadata about the music file
     @db.exec "INSERT INTO music (title, artist, user_id) VALUES ($1, $2, $3)", title, artist, user_id
 
     # Upload music file to storage bucket
-    File.open(file.path, "r") do |music_file|
-      @music_uploader.upload("blue-waves", "#{user_id}/#{title}", music_file)
-    end
+    @music_uploader.upload("blue-waves", "#{user_id}/#{title}", file)
   end
 
   # Lists all titles and artists from music files in the user's collection

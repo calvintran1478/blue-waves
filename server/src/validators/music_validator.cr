@@ -8,6 +8,8 @@ module Validators::MusicValidator
   include Schemas::MusicSchemas
   include Exceptions
 
+  MAX_FILE_SZE = 25_000_000 # 25000 bytes, or 25MB
+
   def validate_add_music_request(context : HTTP::Server::Context) : (AddMusicRequest | Nil)
     # Parse form data
     file = nil
@@ -18,8 +20,8 @@ module Validators::MusicValidator
       HTTP::FormData.parse(context.request) do |part|
         case part.name
         when "file"
-          file = File.tempfile("music_file")
-          File.write(file.path, part.body.gets_to_end)
+          file = IO::Memory.new(MAX_FILE_SZE + 1)
+          IO.copy(part.body, file, MAX_FILE_SZE + 1)
         when "artist"
           artist = part.body.gets_to_end
         when "title"
@@ -32,9 +34,16 @@ module Validators::MusicValidator
       return
     end
 
+    # Check that the music file is included and does not exceed size limits
     if file.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << ExceptionResponse.new("No file found").to_json
+      return
+    end
+
+    if file.size > MAX_FILE_SZE
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("File size exceeds allowed limits").to_json
       return
     end
 
