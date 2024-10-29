@@ -1,4 +1,5 @@
 require "db"
+require "uuid"
 require "awscr-s3"
 require "./repository"
 require "../schemas/music_schemas"
@@ -31,40 +32,41 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   def create(title : String, artist : String, file : IO::Memory, user_id : String) : Nil
     # Store metadata about the music file
-    @db.exec "INSERT INTO music (title, artist, user_id) VALUES ($1, $2, $3)", title, artist, user_id
+    music_id = Random::Secure.urlsafe_base64
+    @db.exec "INSERT INTO music (music_id, title, artist, user_id) VALUES ($1, $2, $3, $4)", music_id, title, artist, user_id
 
     # Upload music file to storage bucket
-    @music_uploader.upload("blue-waves", "#{user_id}/#{title}", file)
+    @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}", file)
   end
 
   # Lists all titles and artists from music files in the user's collection
   #
   # ```
-  # music_repository.list("user_id") # => [Schemas::MusicSchemas::MusicMetadata(@title="Title1", @artist="Artist1"), ...]
+  # music_repository.list("user_id") # => [Schemas::MusicSchemas::MusicMetadata(@music_id="music_id", @title="Title1", @artist="Artist1"), ...]
   # ```
   def list(user_id : String) : Array(MusicMetadata)
     # Fetch music information
     music_items = Array(MusicMetadata).new
-    @db.query("SELECT title, artist FROM music WHERE user_id=$1", user_id) do |rs|
+    @db.query("SELECT music_id, title, artist FROM music WHERE user_id=$1", user_id) do |rs|
       rs.each do
-        title, artist = rs.read(String, String)
-        music_items << MusicMetadata.new(title, artist)
+        music_id, title, artist = rs.read(String, String, String)
+        music_items << MusicMetadata.new(music_id, title, artist)
       end
     end
 
     return music_items
   end
 
-  # Retreives a single music file in the user's collection based on title
+  # Retreives a single music file in the user's collection based on music id
   # and writes it to the given context response output
   #
   # ```
-  # music_repository.get("user_id", "title")
+  # music_repository.get("user_id", "music_id")
   # ```
-  def get(user_id : String, title : String, context : HTTP::Server::Context) : Nil
+  def get(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
     begin
       # Fetch music file from storage bucket
-      @music_db.get_object("blue-waves", "#{user_id}/#{title}") do |music_file|
+      @music_db.get_object("blue-waves", "#{user_id}/#{music_id}") do |music_file|
         context.response.content_type = "audio/mpeg"
         context.response.status = HTTP::Status::OK
         IO.copy(music_file.body_io, context.response.output)

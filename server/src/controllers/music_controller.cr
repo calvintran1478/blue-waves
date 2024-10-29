@@ -90,13 +90,13 @@ class Controllers::MusicController < Controllers::Controller
   # Retreives a music file from the user's collection
   #
   # Method: GET
-  # Path: /api/v1/users/music/{title}
-  def get_music_file(context : HTTP::Server::Context, title : String) : Nil
+  # Path: /api/v1/users/music/{music_id}
+  def get_music_file(context : HTTP::Server::Context, music_id : String) : Nil
     # Get user
     user_id = Utils::Auth.get_user(context)
     return if user_id.nil?
 
     # Fetch music file and write contents to the response body
-    @music_repository.get(user_id, title, context)
+    @music_repository.get(user_id, music_id, context)
   end
 end

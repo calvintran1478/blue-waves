@@ -42,7 +42,7 @@ module Schemas::MusicSchemas
   struct MusicMetadata
     include JSON::Serializable
 
-    def initialize(@title : String, @artist : String)
+    def initialize(@music_id : String, @title : String, @artist : String)
     end
   end
 end
