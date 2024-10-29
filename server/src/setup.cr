@@ -31,13 +31,14 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
   db.exec(
     <<-SQL
       CREATE TABLE music (
+        music_id VARCHAR PRIMARY KEY,
         title VARCHAR,
         artist VARCHAR,
         user_id VARCHAR,
         CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
           ON DELETE CASCADE
           ON UPDATE CASCADE,
-        PRIMARY KEY (user_id, title)
+        UNIQUE(user_id, title)
       );
     SQL
   )

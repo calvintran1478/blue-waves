@@ -8,7 +8,7 @@ module Validators::MusicValidator
   include Schemas::MusicSchemas
   include Exceptions
 
-  MAX_FILE_SZE = 25_000_000 # 25000 bytes, or 25MB
+  MAX_FILE_SZE = 25_000_000 # 25,000,000 bytes, or 25MB
 
   def validate_add_music_request(context : HTTP::Server::Context) : (AddMusicRequest | Nil)
     # Parse form data
