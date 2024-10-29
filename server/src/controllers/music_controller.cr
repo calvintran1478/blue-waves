@@ -24,8 +24,8 @@ class Controllers::MusicController < Controllers::Controller
     case {context.request.method, path}
     when {"POST", ""}
       add_music(context)
-    when {"GET", ""}
-      get_music(context)
+    when {"GET", _}
+      path.size == 0 ? get_music(context) : get_music_file(context, path[1...])
     else
       context.response.status = HTTP::Status::NOT_FOUND
     end
@@ -85,5 +85,18 @@ class Controllers::MusicController < Controllers::Controller
     context.response.output << GetMusicResponse.new(
       music: music_items
     ).to_json
+  end
+
+  # Retreives a music file from the user's collection
+  #
+  # Method: GET
+  # Path: /api/v1/users/music/{title}
+  def get_music_file(context : HTTP::Server::Context, title : String) : Nil
+    # Get user
+    user_id = Utils::Auth.get_user(context)
+    return if user_id.nil?
+
+    # Fetch music file and write contents to the response body
+    @music_repository.get(user_id, title, context)
   end
 end

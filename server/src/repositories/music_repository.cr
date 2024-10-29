@@ -9,6 +9,7 @@ require "../schemas/music_schemas"
 # music table should be made though a MusicRepository object.
 class Repositories::MusicRepository < Repositories::Repository
   include Schemas::MusicSchemas
+  include Exceptions
 
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
     @music_uploader = Awscr::S3::FileUploader.new(@music_db)
@@ -52,5 +53,25 @@ class Repositories::MusicRepository < Repositories::Repository
     end
 
     return music_items
+  end
+
+  # Retreives a single music file in the user's collection based on title
+  # and writes it to the given context response output
+  #
+  # ```
+  # music_repository.get("user_id", "title")
+  # ```
+  def get(user_id : String, title : String, context : HTTP::Server::Context) : Nil
+    begin
+      # Fetch music file from storage bucket
+      @music_db.get_object("blue-waves", "#{user_id}/#{title}") do |music_file|
+        context.response.content_type = "audio/mpeg"
+        context.response.status = HTTP::Status::OK
+        IO.copy(music_file.body_io, context.response.output)
+      end
+    rescue
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << ExceptionResponse.new("Music file not found").to_json
+    end
   end
 end
