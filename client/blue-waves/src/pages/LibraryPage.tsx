@@ -1,5 +1,5 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { useNavigate, A } from "@solidjs/router";
 import { api } from "../index.tsx";
 import MusicModal from "../components/MusicModal.tsx";
 
@@ -23,7 +23,7 @@ const LibraryPage = () => {
             headers: {
                 "Authorization": `Bearer ${token()}`
             }
-        }).json<{"music": {"title": string, "artist": string}[]}>();
+        }).json<{"music": {"music_id": string, "title": string, "artist": string}[]}>();
 
         return musicResponse["music"]
     });
@@ -37,10 +37,12 @@ const LibraryPage = () => {
                 <Suspense>
                     <For each={musicEntries()}>
                         {(musicEntry) => (
-                            <div class="h-16 w-auto my-2 border-2">
-                                <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
-                                <h3 class="text-lg">{musicEntry["artist"]}</h3>
-                            </div>
+                            <A href={musicEntry["music_id"]}>
+                                <div class="h-16 w-auto my-2 border-2">
+                                    <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
+                                    <h3 class="text-lg">{musicEntry["artist"]}</h3>
+                                </div>
+                            </A>
                         )}
                     </For>
                 </Suspense>

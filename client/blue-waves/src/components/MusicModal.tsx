@@ -3,9 +3,14 @@ import { createQuery } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-type musicEntriesType = {title: string, artist: string}[];
+// Expected fields for each music entry
+interface MusicEntry {
+    music_id: string,
+    title: string,
+    artist: string
+}
 
-const MusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<musicEntriesType>, setMusicEntries: Setter<musicEntriesType | undefined>}) => {
+const MusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
     const [title, setTitle] = createSignal("");
     const [artist, setArtist] = createSignal("");
 
@@ -21,16 +26,16 @@ const MusicModal = (props: { token: string, closeCallback: () => void, musicEntr
             data.append("file", musicInput.files![0]);
 
             // Add music
-            await api.post("users/music", {
+            const addMusicResponse = await api.post("users/music", {
                 headers: {
                     "Authorization": `Bearer ${props.token}`
                 },
                 body: data
-            });
+            }).json<MusicEntry>();
 
             // Add music entry to list
             const newMusicEntries = [...props.musicEntries()!];
-            newMusicEntries!.push({"title": title(), "artist": artist()});
+            newMusicEntries!.push({"music_id": addMusicResponse["music_id"], "title": addMusicResponse["title"], "artist": addMusicResponse["artist"]});
             props.setMusicEntries(newMusicEntries);
 
             // Close modal
