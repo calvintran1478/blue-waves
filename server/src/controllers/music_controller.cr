@@ -53,15 +53,22 @@ class Controllers::MusicController < Controllers::Controller
     end
 
     # Add music to the user's collection
-    @music_repository.create(data.title, data.artist, data.file, user_id)
+    music_id = @music_repository.create(data.title, data.artist, data.file, user_id)
 
     # Close file IO
     data.file.close
+
+    # Return error response if there were issues adding the music file
+    if music_id.nil?
+      context.response.status = HTTP::Status::INTERNAL_SERVER_ERROR
+      return
+    end
 
     # Send success response
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::CREATED
     context.response.output << AddMusicResponse.new(
+      music_id: music_id,
       title: data.title,
       artist: data.artist,
     ).to_json
