@@ -9,6 +9,7 @@ const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
+const MusicPage = lazy(() => import("./pages/MusicPage"));
 
 const routes = [
     {
@@ -26,6 +27,10 @@ const routes = [
     {
         path: "/library",
         component: LibraryPage
+    },
+    {
+        path: "/library/:music_id",
+        component: MusicPage
     }
 ]
 
