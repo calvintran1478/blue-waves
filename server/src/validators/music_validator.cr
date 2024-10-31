@@ -15,13 +15,14 @@ module Validators::MusicValidator
     file = nil
     title = nil
     artist = nil
+    file_size = 0
 
     begin
       HTTP::FormData.parse(context.request) do |part|
         case part.name
         when "file"
-          file = IO::Memory.new(MAX_FILE_SZE + 1)
-          IO.copy(part.body, file, MAX_FILE_SZE + 1)
+          file = File.tempfile("music_file")
+          file_size = IO.copy(part.body, file, MAX_FILE_SZE + 1)
         when "artist"
           artist = part.body.gets_to_end
         when "title"
@@ -41,7 +42,7 @@ module Validators::MusicValidator
       return
     end
 
-    if file.size > MAX_FILE_SZE
+    if file_size > MAX_FILE_SZE
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << ExceptionResponse.new("File size exceeds allowed limits").to_json
       return

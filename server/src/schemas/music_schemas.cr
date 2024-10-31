@@ -12,9 +12,9 @@ module Schemas::MusicSchemas
 
     getter title : String
     getter artist : String
-    getter file : IO::Memory
+    getter file : File
 
-    def initialize(@title : String, @artist : String, @file : IO::Memory)
+    def initialize(@title : String, @artist : String, @file : File)
     end
   end
 
@@ -24,7 +24,7 @@ module Schemas::MusicSchemas
   struct AddMusicResponse
     include JSON::Serializable
 
-    def initialize(@title : String, @artist : String)
+    def initialize(@music_id : String, @title : String, @artist : String)
     end
   end
 

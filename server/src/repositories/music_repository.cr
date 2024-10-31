@@ -30,7 +30,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.create("music_title", "artist", music_file, "user_id")
   # ```
-  def create(title : String, artist : String, file : IO::Memory, user_id : String) : (String | Nil)
+  def create(title : String, artist : String, file : File, user_id : String) : (String | Nil)
     begin
       @db.transaction do |tx|
         # Store metadata about the music file
@@ -38,7 +38,9 @@ class Repositories::MusicRepository < Repositories::Repository
         tx.connection.exec "INSERT INTO music (music_id, title, artist, user_id) VALUES ($1, $2, $3, $4)", music_id, title, artist, user_id
 
         # Upload music file to storage bucket
-        @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}", file)
+        File.open(file.path, "r") do |music_file|
+          @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}", music_file)
+        end
 
         return music_id
       end

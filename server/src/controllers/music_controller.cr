@@ -55,8 +55,8 @@ class Controllers::MusicController < Controllers::Controller
     # Add music to the user's collection
     music_id = @music_repository.create(data.title, data.artist, data.file, user_id)
 
-    # Close file IO
-    data.file.close
+    # Delete temporary file
+    data.file.delete
 
     # Return error response if there were issues adding the music file
     if music_id.nil?
