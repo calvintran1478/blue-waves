@@ -26,6 +26,12 @@ class Controllers::MusicController < Controllers::Controller
       add_music(context)
     when {"GET", _}
       path.size == 0 ? get_music(context) : get_music_file(context, path[1...])
+    when {"DELETE", _}
+      if path.size != 0 && path[0] == '/'
+        delete_music_file(context, path[1...])
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
     else
       context.response.status = HTTP::Status::NOT_FOUND
     end
@@ -106,5 +112,26 @@ class Controllers::MusicController < Controllers::Controller
 
     # Fetch music file and write contents to the response body
     @music_repository.get(user_id, music_id, context)
+  end
+
+  # Deletes a music file from the user's collection
+  #
+  # Method: DELETE
+  # Path: /api/v1/users/music/{music_id}
+  def delete_music_file(context : HTTP::Server::Context, music_id : String) : Nil
+    # Get user
+    user_id = Utils::Auth.get_user(context)
+    return if user_id.nil?
+
+    # Delete music file
+    file_removed = @music_repository.delete(user_id, music_id)
+    unless file_removed
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      return
+    end
+
+    # Send success response
+    context.response.status = HTTP::Status::NO_CONTENT
   end
 end

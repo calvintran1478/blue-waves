@@ -92,4 +92,24 @@ class Repositories::MusicRepository < Repositories::Repository
       context.response.output << ExceptionResponse.new("Music file not found").to_json
     end
   end
+
+  # Deletes a music file from the user's collection along with its metadata
+  # and cover art. Returns whether the deletion was successful.
+  #
+  # ```
+  # music_repository.delete("user_id", "music_id") # => true if the user originally had a music file with the given music id
+  # ```
+  def delete(user_id : String, music_id : String) : Bool
+    # Delete metadata
+    a = @db.exec "DELETE FROM music WHERE user_id=$1 AND music_id=$2", user_id, music_id
+
+    # Delete music file and its cover art
+    file_exists = (a.rows_affected != 0)
+    if file_exists
+      @music_db.delete_object("blue-waves", "#{user_id}/#{music_id}")
+      @music_db.delete_object("blue-waves", "#{user_id}/#{music_id}/cover-art")
+    end
+
+    return file_exists
+  end
 end
