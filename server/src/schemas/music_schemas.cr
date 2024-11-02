@@ -12,9 +12,10 @@ module Schemas::MusicSchemas
 
     getter title : String
     getter artist : String
-    getter file : File
+    getter music_file : File
+    getter art_file : File | Nil
 
-    def initialize(@title : String, @artist : String, @file : File)
+    def initialize(@title : String, @artist : String, @music_file : File, @art_file : File | Nil)
     end
   end
 
