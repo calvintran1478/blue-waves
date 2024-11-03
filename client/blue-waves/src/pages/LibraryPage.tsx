@@ -1,21 +1,13 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
-import { useNavigate, A } from "@solidjs/router";
+import { createAsync, A } from "@solidjs/router";
+import { getToken } from "../utils/token";
 import { api } from "../index.tsx";
 import MusicModal from "../components/MusicModal.tsx";
 
 const LibraryPage = () => {
     const [showMusicModal, setShowMusicModal] = createSignal(false);
 
-    const navigate = useNavigate();
-
-    const [token] = createResource(async () => {
-        try {
-            const tokenResponse = await api.get("users/token", { credentials: "include" }).json<{"access_token": string}>();
-            return tokenResponse["access_token"];
-        } catch (error) {
-            navigate("/login");
-        }
-    });
+    const token = createAsync(() => getToken());
 
     const [musicEntries, modifyMusicEntries] = createResource(token, async () => {
         // Get music entries
