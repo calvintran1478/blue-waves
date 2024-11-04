@@ -77,7 +77,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # and writes it to the given context response output
   #
   # ```
-  # music_repository.get("user_id", "music_id")
+  # music_repository.get("user_id", "music_id", context)
   # ```
   def get(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
     begin
@@ -96,7 +96,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # Retreives the cover art for a single music file in the user's collection
   #
   # ```
-  # music_repository.get_cover_art("user_id", "music_id")
+  # music_repository.get_cover_art("user_id", "music_id", context)
   # ```
   def get_cover_art(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
     begin
