@@ -93,6 +93,25 @@ class Repositories::MusicRepository < Repositories::Repository
     end
   end
 
+  # Retreives the cover art for a single music file in the user's collection
+  #
+  # ```
+  # music_repository.get_cover_art("user_id", "music_id")
+  # ```
+  def get_cover_art(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
+    begin
+      # Fetch music cover art from storage bucket
+      @music_db.get_object("blue-waves", "#{user_id}/#{music_id}/cover-art") do |art_file|
+        context.response.content_type = "image/jpeg"
+        context.response.status = HTTP::Status::OK
+        IO.copy(art_file.body_io, context.response.output)
+      end
+    rescue
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << ExceptionResponse.new("Cover art file not found").to_json
+    end
+  end
+
   # Deletes a music file from the user's collection along with its metadata
   # and cover art. Returns whether the deletion was successful.
   #

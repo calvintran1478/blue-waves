@@ -25,7 +25,27 @@ class Controllers::MusicController < Controllers::Controller
     when {"POST", ""}
       add_music(context)
     when {"GET", _}
-      path.size == 0 ? get_music(context) : get_music_file(context, path[1...])
+      # Fetch music metadata
+      if path.size == 0
+        get_music(context)
+
+      # Fetch music file or cover art
+      elsif path.size > 1 && path[0] == '/'
+        # Determine if cover art or music file is requested
+        sub_path = path[1...]
+        slash_index = sub_path.index("/")
+
+        # Handle request
+        if slash_index.nil?
+          get_music_file(context, sub_path)
+        elsif sub_path[slash_index...] == "/cover-art"
+          get_music_cover_art(context, sub_path[...slash_index])
+        else
+          context.response.status = HTTP::Status::NOT_FOUND
+        end
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
     when {"DELETE", _}
       if path.size != 0 && path[0] == '/'
         delete_music_file(context, path[1...])
@@ -112,6 +132,19 @@ class Controllers::MusicController < Controllers::Controller
 
     # Fetch music file and write contents to the response body
     @music_repository.get(user_id, music_id, context)
+  end
+
+  # Retreives the cover art for a music file from the user's collection
+  #
+  # Method: GET
+  # Path: /api/v1/users/music/{music_id}/cover-art
+  def get_music_cover_art(context : HTTP::Server::Context, music_id : String) : Nil
+    # Get user
+    user_id = Utils::Auth.get_user(context)
+    return if user_id.nil?
+
+    # Fetch music cover art and write contents to the response body
+    @music_repository.get_cover_art(user_id, music_id, context)
   end
 
   # Deletes a music file from the user's collection
