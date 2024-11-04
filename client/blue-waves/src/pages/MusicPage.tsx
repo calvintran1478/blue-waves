@@ -1,20 +1,13 @@
 import { createResource, Suspense } from "solid-js";
 import { api } from "../index.tsx";
-import { useNavigate, useParams } from "@solidjs/router";
+import { createAsync, useParams } from "@solidjs/router";
+import { getToken } from "../utils/token";
 
 const MusicPage = () => {
 
     const params = useParams();
-    const navigate = useNavigate();
 
-    const [token] = createResource(async () => {
-        try {
-            const tokenResponse = await api.get("users/token", { credentials: "include" }).json<{"access_token": string}>();
-            return tokenResponse["access_token"];
-        } catch (error) {
-            navigate("/login");
-        }
-    });
+    const token = createAsync(() => getToken());
 
     const [musicFile] = createResource(token, async () => {
         // Get music file
@@ -31,11 +24,26 @@ const MusicPage = () => {
         return url;
     });
 
+    const [coverArtFile] = createResource(token, async () => {
+        // Get cover art
+        const musicArtResponse = await api.get(`users/music/${params.music_id}/cover-art`, {
+            headers: {
+                "Authorization": `Bearer ${token()}`
+            }
+        });
+
+        // Decode data as an image
+        const imageBuffer = await musicArtResponse.arrayBuffer();
+        const blob = new Blob([imageBuffer])
+        const url = window.URL.createObjectURL(blob);
+        return url;
+    })
+
     return (
         <div class="flex justify-center items-center w-screen h-screen">
             <div class="flex flex-col justify-center items-center aspect-video" style="width: 1080px">
                 <Suspense>
-                    <video controls src={musicFile()}></video>
+                    <video controls poster={coverArtFile()} src={musicFile()}></video>
                 </Suspense>
             </div>
         </div>
