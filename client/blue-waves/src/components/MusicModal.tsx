@@ -15,6 +15,7 @@ const MusicModal = (props: { token: string, closeCallback: () => void, musicEntr
     const [artist, setArtist] = createSignal("");
 
     let musicInput!: HTMLInputElement;
+    let artInput!: HTMLInputElement;
 
     const addMusicQuery = createQuery(() => ({
         queryKey: ["AddMusic"],
@@ -23,7 +24,10 @@ const MusicModal = (props: { token: string, closeCallback: () => void, musicEntr
             const data = new FormData();
             data.append("title", title());
             data.append("artist", artist());
-            data.append("file", musicInput.files![0]);
+            data.append("musicFile", musicInput.files![0]);
+            if (artInput.files!.length != 0) {
+                data.append("artFile", artInput.files![0]);
+            }
 
             // Add music
             const addMusicResponse = await api.post("users/music", {
@@ -51,7 +55,7 @@ const MusicModal = (props: { token: string, closeCallback: () => void, musicEntr
     }
 
     return (
-        <div class="p-6 bg-white" style="width: 40rem; height: 24rem;">
+        <div class="p-6 bg-white" style="width: 40rem; height: 28rem;">
             <div class="flex flex-row-reverse">
                 <button onClick={props.closeCallback}>close</button>
             </div>
@@ -64,7 +68,8 @@ const MusicModal = (props: { token: string, closeCallback: () => void, musicEntr
                     <label for="artist" class="text-lg m-2">Artist</label>
                     <input id="artist" class="border-2 m-2 w-60 h-8" onChange={(event) => setArtist(event.target.value)} required/>
                 </div>
-                <input ref={musicInput} type="file" id="addFile" class="w-80 m-6 mb-8" required/>
+                <input ref={musicInput} type="file" id="musicFile" class="w-80 m-6 mb-4" required/>
+                <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
                 <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={addMusicQuery.isFetching}>
                     <span class="mr-2">Add music</span>
                     <Show when={addMusicQuery.isFetching}>
