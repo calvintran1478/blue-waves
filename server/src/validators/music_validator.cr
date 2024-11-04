@@ -24,11 +24,13 @@ module Validators::MusicValidator
       HTTP::FormData.parse(context.request) do |part|
         case part.name
         when "musicFile"
-          music_file = File.tempfile("music_file")
-          music_file_size = IO.copy(part.body, music_file, MAX_MUSIC_FILE_SIZE + 1)
+          music_file = File.tempfile("music_file") do |music_file|
+            music_file_size = IO.copy(part.body, music_file, MAX_MUSIC_FILE_SIZE + 1)
+          end
         when "artFile"
-          art_file = File.tempfile("art_file")
-          art_file_size = IO.copy(part.body, art_file, MAX_COVER_ART_FILE_SIZE + 1)
+          art_file = File.tempfile("art_file") do |art_file|
+            art_file_size = IO.copy(part.body, art_file, MAX_COVER_ART_FILE_SIZE + 1)
+          end
         when "artist"
           artist = part.body.gets_to_end
         when "title"
