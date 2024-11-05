@@ -74,18 +74,35 @@ class Repositories::MusicRepository < Repositories::Repository
   end
 
   # Retreives a single music file in the user's collection based on music id
-  # and writes it to the given context response output
+  # and writes it to the given context response output. Can be used to only
+  # fetch a specific set of bytes if the range header is provided
   #
   # ```
   # music_repository.get("user_id", "music_id", context)
   # ```
   def get(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
     begin
-      # Fetch music file from storage bucket
-      @music_db.get_object("blue-waves", "#{user_id}/#{music_id}") do |music_file|
-        context.response.content_type = "audio/mpeg"
-        context.response.status = HTTP::Status::OK
-        IO.copy(music_file.body_io, context.response.output)
+      # Check range header for requested bytes
+      range_header = context.request.headers["Range"]?
+
+      # Retreive requested number of bytes
+      if !range_header.nil?
+        # Add range header
+        s3_headers = {"Range" => range_header}
+
+        # Fetch requested byte range from storage bucket
+        @music_db.get_object("blue-waves", "#{user_id}/#{music_id}", s3_headers) do |music_file|
+          context.response.content_type = "audio/mpeg"
+          context.response.status = HTTP::Status::PARTIAL_CONTENT
+          IO.copy(music_file.body_io, context.response.output)
+        end
+      else
+        # Fetch complete music file from storage bucket
+        @music_db.get_object("blue-waves", "#{user_id}/#{music_id}") do |music_file|
+          context.response.content_type = "audio/mpeg"
+          context.response.status = HTTP::Status::OK
+          IO.copy(music_file.body_io, context.response.output)
+        end
       end
     rescue
       context.response.status = HTTP::Status::NOT_FOUND
