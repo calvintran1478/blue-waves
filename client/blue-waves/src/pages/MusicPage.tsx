@@ -17,9 +17,9 @@ const MusicPage = () => {
             }
         });
 
-        // Decode data as an mp3
+        // Decode data as a music file
         const musicBuffer = await musicFileResponse.arrayBuffer();
-        const blob = new Blob([musicBuffer], { type: "audio/mpeg" })
+        const blob = new Blob([musicBuffer])
         const url = window.URL.createObjectURL(blob);
         return url;
     });
