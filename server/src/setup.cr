@@ -18,7 +18,7 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
   db.exec(
     <<-SQL
       CREATE TABLE users (
-        user_id VARCHAR PRIMARY KEY,
+        user_id UUID PRIMARY KEY,
         email VARCHAR UNIQUE,
         password VARCHAR NOT NULL CHECK (length(password) >= 8),
         first_name VARCHAR NOT NULL CHECK (first_name <> ''),
@@ -34,7 +34,7 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
         music_id VARCHAR PRIMARY KEY,
         title VARCHAR,
         artist VARCHAR,
-        user_id VARCHAR,
+        user_id UUID,
         CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
           ON DELETE CASCADE
           ON UPDATE CASCADE,

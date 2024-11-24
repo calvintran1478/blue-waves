@@ -100,10 +100,10 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id.to_s, 1, ex: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i * 3600)
 
     # Generate access token and refresh token pair
-    access_claims = {user_id: user_id, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
+    access_claims = {user_id: user_id.to_s, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
     access_token = JWT.encode(access_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
-    refresh_claims = {user_id: user_id, token_family_id: token_family_id.to_s, sequence_number: 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
+    refresh_claims = {user_id: user_id.to_s, token_family_id: token_family_id.to_s, sequence_number: 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
     refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
