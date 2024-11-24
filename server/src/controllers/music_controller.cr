@@ -46,8 +46,20 @@ class Controllers::MusicController < Controllers::Controller
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
+    when {"PUT", _}
+      if path.size > 1 && path[0] == '/'
+        sub_path = path[1...]
+        slash_index = sub_path.index("/")
+        if sub_path[slash_index...] == "/cover-art"
+          set_cover_art(context, sub_path[...slash_index])
+        else
+          context.response.status = HTTP::Status::NOT_FOUND
+        end
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
     when {"DELETE", _}
-      if path.size != 0 && path[0] == '/'
+      if path.size > 1 && path[0] == '/'
         delete_music_file(context, path[1...])
       else
         context.response.status = HTTP::Status::NOT_FOUND
@@ -71,7 +83,7 @@ class Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Check if music with the given title already exists
-    music_exists = @music_repository.exists(data.title, user_id)
+    music_exists = @music_repository.exists_by_title(user_id, data.title)
     if music_exists
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << ExceptionResponse.new("Music with given title already exists").to_json
@@ -145,6 +157,39 @@ class Controllers::MusicController < Controllers::Controller
 
     # Fetch music cover art and write contents to the response body
     @music_repository.get_cover_art(user_id, music_id, context)
+  end
+
+  # Sets the cover art for a music file from the user's collection
+  #
+  # Method: PUT
+  # Path: /api/v1/users/music/{music_id}/cover-art
+  def set_cover_art(context : HTTP::Server::Context, music_id : String) : Nil
+    # Get user
+    user_id = Utils::Auth.get_user(context)
+    return if user_id.nil?
+
+    # Check if music file exists
+    music_file_exists = @music_repository.exists_by_id(user_id, music_id)
+    if !music_file_exists
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      return
+    end
+
+    # Validate user input
+    data = validate_set_cover_art_request context
+    return if data.nil?
+
+    # Set cover art for the music file
+    cover_art_created = @music_repository.set_cover_art(user_id, music_id, data.art_file)
+
+    # Send success response
+    if cover_art_created
+      context.response.status = HTTP::Status::CREATED
+      context.response.headers["Location"] = "/users/music/#{music_id}/cover-art"
+    else
+      context.response.status = HTTP::Status::NO_CONTENT
+    end
   end
 
   # Deletes a music file from the user's collection

@@ -10,7 +10,7 @@ interface MusicEntry {
     artist: string
 }
 
-const MusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
+const AddMusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
     const [title, setTitle] = createSignal("");
     const [artist, setArtist] = createSignal("");
 
@@ -81,4 +81,4 @@ const MusicModal = (props: { token: string, closeCallback: () => void, musicEntr
     )
 }
 
-export default MusicModal;
+export default AddMusicModal;

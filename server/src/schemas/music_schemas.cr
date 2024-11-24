@@ -46,4 +46,17 @@ module Schemas::MusicSchemas
     def initialize(@music_id : String, @title : String, @artist : String)
     end
   end
+
+  # Request body schema for PUT requests sent to /api/v1/users/music/{music_id}/cover-art
+  #
+  # The given file is expected to be a png or jpeg file, and should be sent as
+  # form data.
+  struct SetCoverArtRequest
+    include JSON::Serializable
+
+    getter art_file : File
+
+    def initialize(@art_file : File)
+    end
+  end
 end

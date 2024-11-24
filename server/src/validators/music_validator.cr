@@ -111,4 +111,47 @@ module Validators::MusicValidator
     # Return validated data
     return AddMusicRequest.new(title, artist, music_file, art_file)
   end
+
+  def validate_set_cover_art_request(context : HTTP::Server::Context) : (SetCoverArtRequest | Nil)
+    # Parse form data
+    art_file = nil
+    art_file_size = 0
+
+    begin
+      HTTP::FormData.parse(context.request) do |part|
+        case part.name
+        when "artFile"
+          art_file_name = part.filename.as(String)
+          if art_file_name.ends_with?("jpg") || art_file_name.ends_with?("jpeg") || art_file_name.ends_with?("png")
+            art_file = File.tempfile("art_file") do |art_file|
+              art_file_size = IO.copy(part.body, art_file, MAX_COVER_ART_FILE_SIZE + 1)
+            end
+          else
+            raise "Invalid cover art file"
+          end
+        end
+      end
+    rescue
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("Malformed request").to_json
+      return
+    end
+
+    # Check that the cover art file exists and does not exceed size limits
+    if art_file.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("No cover art file found").to_json
+      return
+    end
+
+    if art_file_size > MAX_COVER_ART_FILE_SIZE
+      art_file.delete
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("Cover art file size exceeds allowed limits").to_json
+      return
+    end
+
+    # Return validated data
+    return SetCoverArtRequest.new(art_file)
+  end
 end

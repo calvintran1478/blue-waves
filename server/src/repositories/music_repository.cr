@@ -16,13 +16,22 @@ class Repositories::MusicRepository < Repositories::Repository
     @music_uploader = Awscr::S3::FileUploader.new(@music_db)
   end
 
+  # Returns whether a music file with the given id exists in the user's collection
+  #
+  # ```
+  # music_repository.exists_by_id("user_id", "music_id") # => true if user with "user_id" has "music_id" in their collection
+  # ```
+  def exists_by_id(user_id : String, music_id : String) : Bool
+    return @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND music_id=$2)", user_id, music_id, as: Bool
+  end
+
   # Returns whether a music file with the given title exists in the user's collection
   #
   # ```
-  # music_repository.exists("music_title", "user_id") # => true if user with "user_id" has "music_title" in their collection
+  # music_repository.exists_by_title("user_id", "music_title") # => true if user with "user_id" has "music_title" in their collection
   # ```
-  def exists(title : String, user_id : String)
-    return @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE title=$1 AND user_id=$2)", title, user_id, as: Bool
+  def exists_by_title(user_id : String, title : String) : Bool
+    return @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND title=$2)", user_id, title, as: Bool
   end
 
   # Adds a music file to the user's collection.
@@ -127,6 +136,29 @@ class Repositories::MusicRepository < Repositories::Repository
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << ExceptionResponse.new("Cover art file not found").to_json
     end
+  end
+
+  # Sets the cover art for a single music file in the user's collection.
+  # Returns whether the cover art is being set for the first time
+  #
+  # ```
+  # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
+  # ```
+  def set_cover_art(user_id : String, music_id : String, art_file : File) : Bool
+    # Check if cover art is being set for the first time
+    first_created = false
+    begin
+      @music_db.head_object("blue-waves", "#{user_id}/#{music_id}/cover-art")
+    rescue
+      first_created = true
+    end
+
+    # Set cover art
+    File.open(art_file.path, "r") do |file|
+      @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}/cover-art", file)
+    end
+
+    return first_created
   end
 
   # Deletes a music file from the user's collection along with its metadata
