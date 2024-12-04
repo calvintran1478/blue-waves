@@ -59,4 +59,17 @@ module Schemas::MusicSchemas
     def initialize(@art_file : File)
     end
   end
+
+  # Request body schema for PATCH requests sent to /api/v1/users/music/{music_id}
+  #
+  # title is expected be non blank
+  struct UpdateMusicRequest
+    include JSON::Serializable
+
+    getter title : String
+    getter artist : String
+
+    def initialize(@title : String, @artist : String)
+    end
+  end
 end

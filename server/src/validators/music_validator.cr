@@ -154,4 +154,33 @@ module Validators::MusicValidator
     # Return validated data
     return SetCoverArtRequest.new(art_file)
   end
+
+  def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)
+    # Parse JSON body
+    begin
+      data = UpdateMusicRequest.from_json(context.request.body.as(IO))
+    rescue
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+
+    # Check the given title is non-blank
+    if data.title.blank?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("Title cannot be blank").to_json
+      return
+    end
+
+    # Check that the given title name is valid
+    data.title.each_char do |ch|
+      if ch == '/' || ch == '.'
+        context.response.status = HTTP::Status::BAD_REQUEST
+        context.response.output << ExceptionResponse.new("Invalid title").to_json
+        return
+      end
+    end
+
+    # Return validated data
+    return data
+  end
 end

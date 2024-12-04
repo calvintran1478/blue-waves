@@ -47,7 +47,7 @@ const LibraryPage = () => {
             </div>
             <Show when={showUpdateMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <UpdateMusicModal token={token() as string} music_id={selectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)}/>
+                    <UpdateMusicModal token={token() as string} music_id={selectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate}/>
                 </div>
             </Show>
             <Show when={showAddMusicModal()}>

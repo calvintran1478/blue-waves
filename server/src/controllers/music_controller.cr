@@ -58,6 +58,12 @@ class Controllers::MusicController < Controllers::Controller
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
+    when {"PATCH", _}
+      if path.size > 1 && path[0] == '/'
+        update_music(context, path[1...])
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
     when {"DELETE", _}
       if path.size > 1 && path[0] == '/'
         delete_music_file(context, path[1...])
@@ -190,6 +196,31 @@ class Controllers::MusicController < Controllers::Controller
     else
       context.response.status = HTTP::Status::NO_CONTENT
     end
+  end
+
+  # Updates metadata for a music file from the user's collection
+  #
+  # Method: PATCH
+  # Path: /api/v1/users/music/{music_id}
+  def update_music(context : HTTP::Server::Context, music_id : String) : Nil
+    # Get user
+    user_id = Utils::Auth.get_user(context)
+    return if user_id.nil?
+
+    # Validate user input
+    data = validate_update_music_request context
+    return if data.nil?
+
+    # Update music file
+    music_updated = @music_repository.update(user_id, music_id, data.title, data.artist)
+    unless music_updated
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      return
+    end
+
+    # Send success response
+    context.response.status = HTTP::Status::NO_CONTENT
   end
 
   # Deletes a music file from the user's collection

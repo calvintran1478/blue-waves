@@ -161,6 +161,17 @@ class Repositories::MusicRepository < Repositories::Repository
     return first_created
   end
 
+  # Updates metadata for a single music file in the user's collection.
+  #
+  # ```
+  # music_repository.update("user_id", "music_id", "title", "artist") # => true if update was successful
+  # ```
+  def update(user_id : String, music_id : String, title : String, artist : String) : Bool
+    # Update metadata
+    result = @db.exec "UPDATE music SET title=$1,artist=$2 WHERE user_id=$3 AND music_id=$4", title, artist, user_id, music_id
+    return result.rows_affected != 0
+  end
+
   # Deletes a music file from the user's collection along with its metadata
   # and cover art. Returns whether the deletion was successful.
   #
