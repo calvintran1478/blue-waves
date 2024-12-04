@@ -1,5 +1,6 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
 import { createAsync, A } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query"; 
 import { getToken } from "../utils/token";
 import { api } from "../index.tsx";
 import AddMusicModal from "../components/AddMusicModal.tsx";
@@ -9,6 +10,7 @@ const LibraryPage = () => {
     const [showAddMusicModal, setShowAddMusicModal] = createSignal(false);
     const [showUpdateMusicModal, setShowUpdateMusicModal] = createSignal(false);
     const [selectedMusicId, setSelectedMusicId] = createSignal("");
+    const [coverArtUrl, setCoverArtUrl] = createSignal("");
 
     const token = createAsync(() => getToken());
 
@@ -22,6 +24,33 @@ const LibraryPage = () => {
 
         return musicResponse["music"]
     });
+
+    const fetchCoverArtQuery = createQuery(() => ({
+        queryKey: ["FetchCoverArt"],
+        queryFn: async() => {
+            // Get cover art
+            const musicArtResponse = await api.get(`users/music/${selectedMusicId()}/cover-art`, {
+                headers: {
+                    "Authorization": `Bearer ${token()}`
+                }
+            });
+
+            // Decode data as an image
+            const imageBuffer = await musicArtResponse.arrayBuffer();
+            const blob = new Blob([imageBuffer])
+            const url = window.URL.createObjectURL(blob);
+            setCoverArtUrl(url);
+
+            return null;
+        }
+    }));
+
+    const preloadCoverArt = (musicId: string) => {
+        if (musicId !== selectedMusicId()) {
+            setSelectedMusicId(musicId);
+            fetchCoverArtQuery.refetch();
+        }
+    }
 
     return (
         <div>
@@ -39,7 +68,7 @@ const LibraryPage = () => {
                                         <h3 class="text-lg">{musicEntry["artist"]}</h3>
                                     </div>
                                 </A>
-                                <button class="rounded w-10 h-7 border-2 m-4" onClick={() => {setSelectedMusicId(musicEntry["music_id"]); setShowUpdateMusicModal(true)}}>...</button>
+                                <button class="rounded w-10 h-7 border-2 m-4" onMouseOver={() => preloadCoverArt(musicEntry["music_id"])} onClick={() => {setShowUpdateMusicModal(true)}}>...</button>
                             </div>
                         )}
                     </For>
@@ -47,7 +76,7 @@ const LibraryPage = () => {
             </div>
             <Show when={showUpdateMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <UpdateMusicModal token={token() as string} music_id={selectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate}/>
+                    <UpdateMusicModal token={token() as string} musicId={selectedMusicId} setMusicId={setSelectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate} coverArtUrl={coverArtUrl} fetchCoverArtQuery={fetchCoverArtQuery}/>
                 </div>
             </Show>
             <Show when={showAddMusicModal()}>

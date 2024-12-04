@@ -1,5 +1,6 @@
 import { createSignal, createResource, onMount, Accessor, Resource, Setter, Show } from "solid-js";
-import { createQuery } from "@tanstack/solid-query";
+import { until } from "@solid-primitives/promise"; 
+import { createQuery, CreateQueryResult } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
@@ -10,37 +11,27 @@ interface MusicEntry {
     artist: string
 }
 
-const UpdateMusicModal = (props: { token: string, music_id: Accessor<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
+const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtQuery: CreateQueryResult}) => {
     const [title, setTitle] = createSignal("");
     const [artist, setArtist] = createSignal("");
     let artInput!: HTMLInputElement;
 
     onMount(() => {
-        const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.music_id());
+        const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId());
         setTitle(musicEntry!["title"]);
         setArtist(musicEntry!["artist"]);
     })
 
-    const [coverArtFile] = createResource(props.token, async () => {
-        // Get cover art
-        const musicArtResponse = await api.get(`users/music/${props.music_id()}/cover-art`, {
-            headers: {
-                "Authorization": `Bearer ${props.token}`
-            }
-        });
-
-        // Decode data as an image
-        const imageBuffer = await musicArtResponse.arrayBuffer();
-        const blob = new Blob([imageBuffer])
-        const url = window.URL.createObjectURL(blob);
-        return url;
+    const [coverArtFile] = createResource(async () => {
+        await until(() => !props.fetchCoverArtQuery.isFetching)
+        return props.coverArtUrl();
     });
 
     const updateMusicQuery = createQuery(() => ({
         queryKey: ["UpdateMusic"],
         queryFn: async () => {
             // Update music metadata
-            await api.patch(`users/music/${props.music_id()}`, {
+            await api.patch(`users/music/${props.musicId()}`, {
                 headers: {
                     "Authorization": `Bearer ${props.token}`
                 },
@@ -52,8 +43,8 @@ const UpdateMusicModal = (props: { token: string, music_id: Accessor<string>, cl
 
             // Update music entry
             const newMusicEntries = [...props.musicEntries()!];
-            const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.music_id());
-            newMusicEntries[updateIndex] = {"music_id": props.music_id(), "title": title(), "artist": artist()};
+            const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
+            newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title(), "artist": artist()};
             props.setMusicEntries(newMusicEntries);
 
             return null;
@@ -68,12 +59,15 @@ const UpdateMusicModal = (props: { token: string, music_id: Accessor<string>, cl
             data.append("artFile", artInput.files![0]);
 
             // Set cover art
-            await api.put(`users/music/${props.music_id()}/cover-art`, {
+            await api.put(`users/music/${props.musicId()}/cover-art`, {
                 headers: {
                     "Authorization": `Bearer ${props.token}`
                 },
                 body: data
             });
+
+            // Invalidate cover art cache
+            props.setMusicId("");
 
             return null;
         }
