@@ -1,4 +1,4 @@
-import { createSignal, createResource, onMount, Accessor, Resource, Setter, Show } from "solid-js";
+import { createSignal, createResource, onMount, Switch, Match, Accessor, Resource, Setter, Show } from "solid-js";
 import { until } from "@solid-primitives/promise"; 
 import { createQuery, CreateQueryResult } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
@@ -51,6 +51,29 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
         }
     }));
 
+    const deleteMusicQuery = createQuery(() => ({
+        queryKey: ["DeleteMusic"],
+        queryFn: async () => {
+            // Delete music
+            await api.delete(`users/music/${props.musicId()}`, {
+                headers: {
+                    "Authorization": `Bearer ${props.token}`
+                }
+            });
+
+            // Delete music entry
+            const newMusicEntries = [...props.musicEntries()!];
+            const deleteIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
+            newMusicEntries.splice(deleteIndex, 1);
+            props.setMusicEntries(newMusicEntries);
+
+            // Close modal
+            props.closeCallback();
+
+            return null;
+        }
+    }))
+
     const setCoverArtQuery = createQuery(() => ({
         queryKey: ["SetCoverArt"],
         queryFn: async () => {
@@ -73,24 +96,31 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
         }
     }));
 
-    const updateMusic = (event: Event) => {
+    const updateMusic = async (event: Event) => {
         event.preventDefault();
         // Change title and artist
-        updateMusicQuery.refetch();
+        const updatePromises = [updateMusicQuery.refetch()];
 
         // Change cover art if new one was provided
         if (artInput.files!.length === 1) {
-            setCoverArtQuery.refetch();
+            updatePromises.push(setCoverArtQuery.refetch());
         }
 
         // Close modal
+        await Promise.all(updatePromises)
         props.closeCallback();
+    }
+
+    const deleteMusic = async (event: Event) => {
+        event.preventDefault();
+        deleteMusicQuery.refetch();
     }
 
     return (
         <div class="p-6 bg-white" style="width: 60rem; height: 24rem;">
             <div class="flex flex-row-reverse">
-                <button onClick={props.closeCallback}>close</button>
+                <button onClick={props.closeCallback} class="mx-5">close</button>
+                <button onClick={deleteMusic}>delete</button>
             </div>
             <div class="flex justify-around">
                 <form onSubmit={updateMusic} class="flex flex-col justify-center items-center">
@@ -104,8 +134,15 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
                     </div>
                     <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
                     <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={setCoverArtQuery.isFetching}>
-                        <span class="mr-2">Update music</span>
-                        <Show when={setCoverArtQuery.isFetching}>
+                        <Switch fallback={<span class="mr-2">Update music</span>}>
+                            <Match when={setCoverArtQuery.isFetching}>
+                                <span class="mr-2">Updating</span>
+                            </Match>
+                            <Match when={deleteMusicQuery.isFetching}>
+                                <span class="mr-2">Deleting</span>
+                            </Match>
+                        </Switch>
+                        <Show when={setCoverArtQuery.isFetching || deleteMusicQuery.isFetching}>
                             <LoadingSpinner/>
                         </Show>
                     </button>
