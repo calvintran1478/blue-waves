@@ -26,7 +26,7 @@ class Controllers::MusicController < Controllers::Controller
       add_music(context)
     when {"GET", _}
       # Fetch music metadata
-      if path.size == 0
+      if path.size == 0 || path.starts_with?("?")
         get_music(context)
 
       # Fetch music file or cover art
@@ -128,8 +128,27 @@ class Controllers::MusicController < Controllers::Controller
     user_id = Utils::Auth.get_user(context)
     return if user_id.nil?
 
+    # Read pagination parameters
+    limit = context.request.query_params["limit"]?
+    offset = context.request.query_params["offset"]?
+
+    # Validate limit and offset values
+    limit_value = limit.nil? ? nil : limit.to_i?
+    if !limit.nil? && (limit_value.nil? || limit_value < 0)
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("Invalid limit parameter").to_json
+      return
+    end
+
+    offset_value = offset.nil? ? nil : offset.to_i?
+    if !offset.nil? && (offset_value.nil? || offset_value < 0)
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << ExceptionResponse.new("Invalid offset parameter").to_json
+      return
+    end
+
     # Fetch music data
-    music_items = @music_repository.list(user_id)
+    music_items = @music_repository.list(user_id, limit_value, offset_value)
 
     # Send music data
     context.response.content_type = "application/json"
