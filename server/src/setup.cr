@@ -34,6 +34,7 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
         music_id VARCHAR PRIMARY KEY,
         title VARCHAR,
         artist VARCHAR,
+        creation_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         user_id UUID,
         CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
           ON DELETE CASCADE

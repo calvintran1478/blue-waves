@@ -83,7 +83,7 @@ class Repositories::MusicRepository < Repositories::Repository
     offset_value = offset.nil? ? 0 : offset
 
     # Fetch music information
-    @db.query("SELECT music_id, title, artist FROM music WHERE user_id=$1 LIMIT #{limit_value} OFFSET #{offset_value}", user_id) do |rs|
+    @db.query("SELECT music_id, title, artist FROM music WHERE user_id=$1 ORDER BY creation_time DESC LIMIT #{limit_value} OFFSET #{offset_value}", user_id) do |rs|
       rs.each do
         music_id, title, artist = rs.read(String, String, String)
         music_items << MusicMetadata.new(music_id, title, artist)

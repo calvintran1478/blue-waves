@@ -39,7 +39,7 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
 
             // Add music entry to list
             const newMusicEntries = [...props.musicEntries()!];
-            newMusicEntries!.push({"music_id": addMusicResponse["music_id"], "title": addMusicResponse["title"], "artist": addMusicResponse["artist"]});
+            newMusicEntries!.unshift({"music_id": addMusicResponse["music_id"], "title": addMusicResponse["title"], "artist": addMusicResponse["artist"]});
             props.setMusicEntries(newMusicEntries);
 
             // Close modal
