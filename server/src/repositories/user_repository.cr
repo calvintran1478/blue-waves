@@ -39,9 +39,9 @@ class Repositories::UserRepository < Repositories::Repository
   # ```
   # user_repository.get_login_password("user@email.com") # => "user_id", "hashed_password"
   # ```
-  def get_login_password(email : String) : (Tuple(String, Crypto::Bcrypt::Password) | Tuple(Nil, Nil))
+  def get_login_password(email : String) : (Tuple(UUID, Crypto::Bcrypt::Password) | Tuple(Nil, Nil))
     begin
-      user_id, password = @db.query_one "SELECT user_id, password FROM users WHERE email=$1", email, as: { String, String }
+      user_id, password = @db.query_one "SELECT user_id, password FROM users WHERE email=$1", email, as: { UUID, String }
       return user_id, Crypto::Bcrypt::Password.new(password)
     rescue DB::NoResultsError
       return nil, nil
