@@ -18,10 +18,28 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
   db.exec(
     <<-SQL
       CREATE TABLE users (
-        email VARCHAR PRIMARY KEY,
+        user_id UUID PRIMARY KEY,
+        email VARCHAR UNIQUE,
         password VARCHAR NOT NULL CHECK (length(password) >= 8),
         first_name VARCHAR NOT NULL CHECK (first_name <> ''),
         last_name VARCHAR NOT NULL CHECK (last_name <> '')
+      );
+    SQL
+  )
+
+  # Create music table
+  db.exec(
+    <<-SQL
+      CREATE TABLE music (
+        music_id VARCHAR PRIMARY KEY,
+        title VARCHAR,
+        artist VARCHAR,
+        creation_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        user_id UUID,
+        CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE,
+        UNIQUE(user_id, title)
       );
     SQL
   )

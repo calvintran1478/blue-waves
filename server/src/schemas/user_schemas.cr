@@ -29,4 +29,35 @@ module Schemas::UserSchemas
     def initialize(@email : String, @first_name : String, @last_name : String)
     end
   end
+
+  # Request body schema for POST requests sent to /api/v1/users/login
+  struct LoginRequest
+    include JSON::Serializable
+
+    getter email : String
+    getter password : String
+
+    def initialize(@email : String, @password : String)
+    end
+  end
+
+  # Response body schema for server responses to /api/v1/users/login POST requests
+  #
+  # Contains an access token the user can use to authenticate on future endpoints
+  struct LoginResponse
+    include JSON::Serializable
+
+    def initialize(@access_token : String)
+    end
+  end
+
+  # Response body schema for server responses to /api/v1/users/token GET requests
+  #
+  # Contains an access token the user can use to authenticate on future endpoints
+  struct RefreshTokenResponse
+    include JSON::Serializable
+
+    def initialize(@access_token : String)
+    end
+  end
 end
