@@ -5,13 +5,12 @@ require "./controller"
 require "../schemas/music_schemas"
 require "../validators/music_validator"
 require "../repositories/music_repository"
-require "../utils/auth"
 
 # Controller for handling requests made to the music resource
 class Controllers::MusicController < Controllers::Controller
   include Validators::MusicValidator
 
-  def initialize(@music_repository : Repositories::MusicRepository)
+  def initialize(@music_repository : Repositories::MusicRepository, @auth_middleware : Middleware::AuthMiddleware)
     @prefix_length = "/api/v1/users/music".size
   end
 
@@ -81,7 +80,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music
   def add_music(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Validate user input
@@ -125,7 +124,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music
   def get_music(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Read pagination parameters
@@ -164,7 +163,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def get_music_file(context : HTTP::Server::Context, music_id : String) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Fetch music file and write contents to the response body
@@ -177,7 +176,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}/cover-art
   def get_music_cover_art(context : HTTP::Server::Context, music_id : String) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Fetch music cover art and write contents to the response body
@@ -190,7 +189,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}/cover-art
   def set_cover_art(context : HTTP::Server::Context, music_id : String) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Check if music file exists
@@ -223,7 +222,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def update_music(context : HTTP::Server::Context, music_id : String) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Validate user input
@@ -248,7 +247,7 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def delete_music_file(context : HTTP::Server::Context, music_id : String) : Nil
     # Get user
-    user_id = Utils::Auth.get_user(context)
+    user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Delete music file

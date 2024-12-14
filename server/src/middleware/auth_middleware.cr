@@ -1,8 +1,9 @@
 require "http/server"
 require "jwt"
 
-module Utils::Auth
-  extend self
+class Middleware::AuthMiddleware
+  def initialize(@auth_db : Redis::PooledClient)
+  end
 
   def get_user(context : HTTP::Server::Context) : (String | Nil)
     # Check that the authorization header is included
@@ -20,6 +21,13 @@ module Utils::Auth
     end
     access_token = auth_header[(delimiter_index + 1)...]
 
+    # Check if the access token is black listed
+    black_listed = @auth_db.exists("black-list:#{access_token}")
+    if black_listed == 1
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
     # Parse access token and get user id
     begin
       payload, _ = JWT.decode(access_token, ENV["API_SECRET"], JWT::Algorithm::HS256)
@@ -31,3 +39,4 @@ module Utils::Auth
     return payload["user_id"].as_s
   end
 end
+

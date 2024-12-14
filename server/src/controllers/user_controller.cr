@@ -29,6 +29,8 @@ class Controllers::UserController < Controllers::Controller
       register_user(context)
     when {"POST", "/login"}
       login_user(context)
+    when {"POST", "/logout"}
+      logout_user(context)
     when {"GET", "/token"}
       refresh_token(context)
     else
@@ -192,5 +194,55 @@ class Controllers::UserController < Controllers::Controller
     context.response.output << RefreshTokenResponse.new(
       access_token: access_token
     ).to_json
+  end
+
+  # Logs out the user by invalidating their access token and preventing new
+  # access tokens from being generated using their refresh token.
+  #
+  # Method: POST
+  # Path: /api/v1/users/logout
+  def logout_user(context : HTTP::Server::Context) : Nil
+    # Check that the authorization header is included
+    auth_header = context.request.headers["Authorization"]?
+    if auth_header.nil?
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Extract access token
+    delimiter_index = auth_header.index(" ")
+    if delimiter_index.nil? || delimiter_index == auth_header.size - 1 || auth_header[...delimiter_index] != "Bearer"
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+    access_token = auth_header[(delimiter_index + 1)...]
+
+    # Check if the access token is black listed
+    black_listed = @auth_db.exists("black-list:#{access_token}")
+    if black_listed == 1
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Parse access token and get user id
+    begin
+      payload, _ = JWT.decode(access_token, ENV["API_SECRET"], JWT::Algorithm::HS256)
+    rescue
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    # Determine remaining time for which the access token is valid
+    remaining_time = payload["exp"].as_i - Time.utc.to_unix
+
+    # Add access token to black list
+    @auth_db.set("black-list:#{access_token}", "", ex: remaining_time)
+
+    # Invalidate token family if refresh token is not expired
+    begin
+      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, ENV["API_SECRET"], JWT::Algorithm::HS256)
+      @auth_db.del(payload["token_family_id"].as_s)
+    rescue
+    end
   end
 end

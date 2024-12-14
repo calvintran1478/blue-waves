@@ -3,6 +3,7 @@ require "db"
 require "pg"
 require "redis"
 require "awscr-s3"
+require "./middleware/auth_middleware"
 require "./controllers/user_controller"
 require "./controllers/music_controller"
 require "./repositories/user_repository"
@@ -34,13 +35,16 @@ db = DB.open("postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NA
 auth_db = Redis::PooledClient.new(host: AUTH_DB_HOST, port: AUTH_DB_PORT.to_i, password: AUTH_DB_PASSWORD, ssl: AUTH_TLS_ENABLED == "true")
 music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRET, endpoint: MUSIC_DB_ENDPOINT)
 
+# Initialize middleware
+auth_middleware = Middleware::AuthMiddleware.new(auth_db)
+
 # Initialize repositories
 user_repository = Repositories::UserRepository.new(db)
 music_repository = Repositories::MusicRepository.new(db, music_db)
 
 # Initialize resource controllers
 user_controller = Controllers::UserController.new(user_repository, auth_db)
-music_controller = Controllers::MusicController.new(music_repository)
+music_controller = Controllers::MusicController.new(music_repository, auth_middleware)
 
 # Define server handling of requests
 server = HTTP::Server.new do |context|
