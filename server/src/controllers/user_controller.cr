@@ -244,5 +244,17 @@ class Controllers::UserController < Controllers::Controller
       @auth_db.del(payload["token_family_id"].as_s)
     rescue
     end
+
+    # Remove refresh cookie from the client
+    cookie = HTTP::Cookie.new(
+      name: "refresh-token",
+      value: "",
+      samesite: HTTP::Cookie::SameSite::Strict,
+      expires: Time::UNIX_EPOCH
+    )
+    context.response.cookies << cookie
+
+    # Send success response
+    context.response.status = HTTP::Status::NO_CONTENT
   end
 end
