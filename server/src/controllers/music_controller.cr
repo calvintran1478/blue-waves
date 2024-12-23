@@ -17,28 +17,28 @@ class Controllers::MusicController < Controllers::Controller
   # Handles requests made to the /api/v1/users/music route by directing it to the correct handler
   def handle_request(context : HTTP::Server::Context) : Nil
     # Get distinguishing path from resource string
-    path = context.request.resource[@prefix_length, context.request.resource.size]
+    path = context.request.resource.to_slice[@prefix_length...]
 
     # Call appropriate request handler
     case {context.request.method, path}
-    when {"POST", ""}
+    when {"POST", "".to_slice}
       add_music(context)
     when {"GET", _}
       # Fetch music metadata
-      if path.size == 0 || path.starts_with?("?")
+      if path.size == 0 || path[0] == '?'.ord
         get_music(context)
 
       # Fetch music file or cover art
-      elsif path.size > 1 && path[0] == '/'
+      elsif path.size > 1 && path[0] == '/'.ord
         # Determine if cover art or music file is requested
         sub_path = path[1...]
-        slash_index = sub_path.index("/")
+        slash_index = sub_path.index('/'.ord)
 
         # Handle request
         if slash_index.nil?
-          get_music_file(context, sub_path)
-        elsif sub_path[slash_index...] == "/cover-art"
-          get_music_cover_art(context, sub_path[...slash_index])
+          get_music_file(context, String.new(sub_path))
+        elsif sub_path[slash_index...] == "/cover-art".to_slice
+          get_music_cover_art(context, String.new(sub_path[...slash_index]))
         else
           context.response.status = HTTP::Status::NOT_FOUND
         end
@@ -46,11 +46,11 @@ class Controllers::MusicController < Controllers::Controller
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PUT", _}
-      if path.size > 1 && path[0] == '/'
+      if path.size > 1 && path[0] == '/'.ord
         sub_path = path[1...]
-        slash_index = sub_path.index("/")
-        if sub_path[slash_index...] == "/cover-art"
-          set_cover_art(context, sub_path[...slash_index])
+        slash_index = sub_path.index('/'.ord)
+        if sub_path[slash_index...] == "/cover-art".to_slice
+          set_cover_art(context, String.new(sub_path[...slash_index]))
         else
           context.response.status = HTTP::Status::NOT_FOUND
         end
@@ -58,14 +58,14 @@ class Controllers::MusicController < Controllers::Controller
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
-      if path.size > 1 && path[0] == '/'
-        update_music(context, path[1...])
+      if path.size > 1 && path[0] == '/'.ord
+        update_music(context, String.new(path[1...]))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
-      if path.size > 1 && path[0] == '/'
-        delete_music_file(context, path[1...])
+      if path.size > 1 && path[0] == '/'.ord
+        delete_music_file(context, String.new(path[1...]))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
