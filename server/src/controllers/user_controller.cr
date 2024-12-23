@@ -21,17 +21,17 @@ class Controllers::UserController < Controllers::Controller
   # Handles requests made to the /api/v1/users route by directing it to the correct handler
   def handle_request(context : HTTP::Server::Context) : Nil
     # Get distinguishing path from resource string
-    path = context.request.resource[@prefix_length, context.request.resource.size]
+    path = context.request.resource.to_slice[@prefix_length...]
 
     # Call appropriate request handler
     case {context.request.method, path}
-    when {"POST", ""}
+    when {"POST", "".to_slice}
       register_user(context)
-    when {"POST", "/login"}
+    when {"POST", "/login".to_slice}
       login_user(context)
-    when {"POST", "/logout"}
+    when {"POST", "/logout".to_slice}
       logout_user(context)
-    when {"GET", "/token"}
+    when {"GET", "/token".to_slice}
       refresh_token(context)
     else
       context.response.status = HTTP::Status::NOT_FOUND
