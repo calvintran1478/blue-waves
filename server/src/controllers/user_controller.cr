@@ -21,7 +21,7 @@ class Controllers::UserController < Controllers::Controller
   # Handles requests made to the /api/v1/users route by directing it to the correct handler
   def handle_request(context : HTTP::Server::Context) : Nil
     # Get distinguishing path from resource string
-    path = context.request.resource.to_slice[@prefix_length...]
+    path = context.request.resource.unsafe_byte_slice(@prefix_length)
 
     # Call appropriate request handler
     case {context.request.method, path}
