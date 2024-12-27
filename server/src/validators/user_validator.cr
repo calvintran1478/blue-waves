@@ -7,8 +7,6 @@ module Validators::UserValidator
   include Schemas::UserSchemas
   include Exceptions
 
-  ALPHABET = Set{'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'}
-
   # Validates POST requests sent to api/v1/users when registering an account.
   #
   # Returns the parsed request body as a RegisterRequest struct if validation is successful, and nil otherwise.
@@ -49,7 +47,7 @@ module Validators::UserValidator
     # Check that the entered first and last names consist of alphabetical characters
     normalized_first_name = data.first_name.downcase
     normalized_first_name.each_char do |ch|
-      if !ALPHABET.includes?(ch)
+      if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
         context.response.output << ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json
         return
@@ -58,7 +56,7 @@ module Validators::UserValidator
 
     normalized_last_name = data.last_name.downcase
     normalized_last_name.each_char do |ch|
-      if !ALPHABET.includes?(ch)
+      if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
         context.response.output << ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json
         return
