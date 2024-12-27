@@ -14,7 +14,7 @@ require "../repositories/user_repository"
 class Controllers::UserController < Controllers::Controller
   include Validators::UserValidator
 
-  def initialize(@user_repository : Repositories::UserRepository, @auth_db : Redis::PooledClient)
+  def initialize(@user_repository : Repositories::UserRepository, @auth_db : Redis::PooledClient, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users".size
   end
 
@@ -28,7 +28,18 @@ class Controllers::UserController < Controllers::Controller
     when {"POST", "".to_slice}
       register_user(context)
     when {"POST", "/login".to_slice}
-      login_user(context)
+      # Perform rate limiting based on IP address
+      remote_address = context.request.remote_address.to_s
+      ip_address = remote_address[...remote_address.rindex(":")]
+      login_allowed = @rate_limit_middleware.rate_limit_request(ip_address, "POST", "/api/v1/users/login")
+
+      # Let the request go through if the user is allowed
+      if login_allowed
+        login_user(context)
+      else
+        context.response.status = HTTP::Status::TOO_MANY_REQUESTS
+        context.response.output << ExceptionResponse.new("Too Many Requests").to_json
+      end
     when {"POST", "/logout".to_slice}
       logout_user(context)
     when {"GET", "/token".to_slice}

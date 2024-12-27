@@ -4,11 +4,13 @@ require "pg"
 require "redis"
 require "awscr-s3"
 require "./middleware/auth_middleware"
+require "./middleware/rate_limit_middleware"
 require "./controllers/user_controller"
 require "./controllers/music_controller"
 require "./repositories/user_repository"
 require "./repositories/music_repository"
 require "./utils/env"
+require "./utils/config"
 
 # Load environment
 Utils::Env.load_env()
@@ -37,13 +39,15 @@ music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRE
 
 # Initialize middleware
 auth_middleware = Middleware::AuthMiddleware.new(auth_db)
+token_buckets = Utils::Config.load_rate_limit_config("rate_limit.conf", auth_db)
+rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_buckets)
 
 # Initialize repositories
 user_repository = Repositories::UserRepository.new(db)
 music_repository = Repositories::MusicRepository.new(db, music_db)
 
 # Initialize resource controllers
-user_controller = Controllers::UserController.new(user_repository, auth_db)
+user_controller = Controllers::UserController.new(user_repository, auth_db, rate_limit_middleware)
 music_controller = Controllers::MusicController.new(music_repository, auth_middleware)
 
 # Define server handling of requests
