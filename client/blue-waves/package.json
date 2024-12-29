@@ -16,6 +16,7 @@
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "idb": "^8.0.1",
     "ky": "^1.7.2",
     "postcss": "^8.4.47",
     "solid-js": "^1.9.3",

@@ -45,6 +45,7 @@ const queryClient = new QueryClient({
 
 export const api = ky.create({
     prefixUrl: "http://localhost:8080/api/v1",
+    retry: 0,
     hooks: {
         beforeError: [
             async(error) => {
