@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import { Router } from "@solidjs/router";
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query'; 
 import ky from "ky";
+import { HTTPError } from "ky";
 import "./index.css"
 
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -50,7 +51,11 @@ export const api = ky.create({
         beforeError: [
             async(error) => {
                 // Parse error message from response body
-                error.message = (await error.response.json() as { error: string }).error;
+                const httpError = error as HTTPError;
+                if (httpError.response.status >= 400) {
+                    error.message = (await error.response.json() as { error: string }).error;
+                }
+
                 return error;
             }
         ]

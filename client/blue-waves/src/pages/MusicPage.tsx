@@ -3,6 +3,7 @@ import { api } from "../index.tsx";
 import { createAsync, useParams } from "@solidjs/router";
 import { getToken } from "../utils/token";
 import { openDB } from "idb";
+import { HTTPError } from "ky"; 
 
 const MusicPage = () => {
 
@@ -40,10 +41,14 @@ const MusicPage = () => {
 
                 return url;
             } catch (e) {
+                const httpError = e as HTTPError;
+
                 // Cache hit: reuse saved data
-                const blob = new Blob([musicFileEntry["music_buffer"]]);
-                const url = window.URL.createObjectURL(blob);
-                return url;
+                if (httpError.response.status === 304) {
+                    const blob = new Blob([musicFileEntry["music_buffer"]]);
+                    const url = window.URL.createObjectURL(blob);
+                    return url;
+                }
             }
         } else {
             // If no cached value exists perform a normal request for the music file
@@ -95,10 +100,14 @@ const MusicPage = () => {
 
                 return url;
             } catch (e) {
+                const httpError = e as HTTPError;
+                
                 // Cache hit: reuse saved data
-                const blob = new Blob([coverArtFileEntry["image_buffer"]]);
-                const url = window.URL.createObjectURL(blob);
-                return url;
+                if (httpError.response.status === 304) {
+                    const blob = new Blob([coverArtFileEntry["image_buffer"]]);
+                    const url = window.URL.createObjectURL(blob);
+                    return url;
+                }
             }
         } else {
             // If no cached value exists perform a normal request for the music file
