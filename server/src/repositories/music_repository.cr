@@ -153,9 +153,25 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   def get_cover_art(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
     begin
+      # Check for conditional request
+      modified_since = context.request.headers["If-Modified-Since"]?
+      if !modified_since.nil?
+        headers = @music_db.head_object("blue-waves", "#{user_id}/#{music_id}/cover-art")
+        threshold_time = HTTP.parse_time(modified_since)
+
+        if !threshold_time.nil? && headers.last_modified <= threshold_time
+          context.response.headers["Last-Modified"] = HTTP.format_time(headers.last_modified)
+          context.response.headers["Cache-Control"] = "private, no-cache"
+          context.response.status = HTTP::Status::NOT_MODIFIED
+          return
+        end
+      end
+
       # Fetch music cover art from storage bucket
       @music_db.get_object("blue-waves", "#{user_id}/#{music_id}/cover-art") do |art_file|
         context.response.content_type = "image/jpeg"
+        context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
+        context.response.headers["Cache-Control"] = "private, no-cache"
         context.response.status = HTTP::Status::OK
         IO.copy(art_file.body_io, context.response.output)
       end
