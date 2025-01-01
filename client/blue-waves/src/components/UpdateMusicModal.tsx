@@ -1,6 +1,7 @@
 import { createSignal, createResource, onMount, Switch, Match, Accessor, Resource, Setter, Show } from "solid-js";
 import { until } from "@solid-primitives/promise"; 
 import { createQuery, CreateQueryResult } from "@tanstack/solid-query";
+import { openDB } from "idb";
 import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
@@ -66,6 +67,16 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
             const deleteIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
             newMusicEntries.splice(deleteIndex, 1);
             props.setMusicEntries(newMusicEntries);
+
+            // Delete cache entry
+            const db = await openDB("musicFileDB", 1, {
+                upgrade(database) {
+                    database.createObjectStore("musicFiles", { keyPath: "music_id" });
+                    database.createObjectStore("coverArtFiles", { keyPath: "music_id" });
+                },
+            })
+            await db.delete("musicFiles", props.musicId());
+            await db.delete("coverArtFiles", props.musicId());
 
             // Close modal
             props.closeCallback();
