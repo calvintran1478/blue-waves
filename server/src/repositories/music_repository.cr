@@ -117,25 +117,10 @@ class Repositories::MusicRepository < Repositories::Repository
           IO.copy(music_file.body_io, context.response.output)
         end
       else
-        # Check for conditional request
-        modified_since = context.request.headers["If-Modified-Since"]?
-        if !modified_since.nil?
-          headers = @music_db.head_object("blue-waves", "#{user_id}/#{music_id}")
-          threshold_time = HTTP.parse_time(modified_since)
-
-          if !threshold_time.nil? && headers.last_modified <= threshold_time
-            context.response.headers["Last-Modified"] = HTTP.format_time(headers.last_modified)
-            context.response.headers["Cache-Control"] = "private, no-cache"
-            context.response.status = HTTP::Status::NOT_MODIFIED
-            return
-          end
-        end
-
         # Fetch complete music file from storage bucket
         @music_db.get_object("blue-waves", "#{user_id}/#{music_id}") do |music_file|
           context.response.content_type = "audio/mpeg"
-          context.response.headers["Last-Modified"] = music_file.headers["Last-Modified"]
-          context.response.headers["Cache-Control"] = "private, no-cache"
+          context.response.headers["Cache-Control"] = "private"
           context.response.status = HTTP::Status::OK
           IO.copy(music_file.body_io, context.response.output)
         end
