@@ -189,6 +189,14 @@ class Controllers::MusicController < Controllers::Controller
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
+    # Perform rate limiting
+    get_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}/cover-art")
+    if !get_cover_art_request_allowed
+      context.response.status = HTTP::Status::TOO_MANY_REQUESTS
+      ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+      return
+    end
+
     # Fetch music cover art and write contents to the response body
     @music_repository.get_cover_art(user_id, music_id, context)
   end
@@ -201,6 +209,14 @@ class Controllers::MusicController < Controllers::Controller
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
+
+    # Perform rate limiting
+    set_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "PUT", "/api/v1/users/music/{music_id}/cover-art")
+    if !set_cover_art_request_allowed
+      context.response.status = HTTP::Status::TOO_MANY_REQUESTS
+      ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+      return
+    end
 
     # Check if music file exists
     music_file_exists = @music_repository.exists_by_id(user_id, music_id)
