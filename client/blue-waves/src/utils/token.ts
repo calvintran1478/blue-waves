@@ -3,8 +3,7 @@ import { api } from "../index.tsx";
 
 export const getToken = query(async () => {
     try {
-        const tokenResponse = await api.get("users/token", { credentials: "include" }).json<{"access_token": string}>();
-        return tokenResponse["access_token"];
+        return await api.get("users/token", { credentials: "include" }).text();
     } catch (error) {
         throw redirect("/login");
     }

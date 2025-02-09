@@ -133,12 +133,9 @@ class Controllers::UserController < Controllers::Controller
     context.response.cookies << cookie
 
     # Send access token
-    context.response.content_type = "application/json"
+    context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::OK
-    response_body = LoginResponse.new(
-      access_token: access_token
-    )
-    response_body.to_json(context.response.output)
+    context.response.output << access_token
   end
 
   # Returns a new refresh token access token pair the user can use to authenticate
@@ -202,12 +199,9 @@ class Controllers::UserController < Controllers::Controller
     context.response.cookies << cookie
 
     # Send access token
-    context.response.content_type = "application/json"
+    context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::OK
-    response_body = RefreshTokenResponse.new(
-      access_token: access_token
-    )
-    response_body.to_json(context.response.output)
+    context.response.output << access_token
   end
 
   # Logs out the user by invalidating their access token and preventing new
