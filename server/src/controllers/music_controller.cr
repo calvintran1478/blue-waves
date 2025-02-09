@@ -91,7 +91,7 @@ class Controllers::MusicController < Controllers::Controller
     music_exists = @music_repository.exists_by_title(user_id, data.title)
     if music_exists
       context.response.status = HTTP::Status::CONFLICT
-      context.response.output << ExceptionResponse.new("Music with given title already exists").to_json
+      ExceptionResponse.new("Music with given title already exists").to_json(context.response.output)
       return
     end
 
@@ -111,11 +111,12 @@ class Controllers::MusicController < Controllers::Controller
     # Send success response
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::CREATED
-    context.response.output << AddMusicResponse.new(
+    response_body = AddMusicResponse.new(
       music_id: music_id,
       title: data.title,
       artist: data.artist,
-    ).to_json
+    )
+    response_body.to_json(context.response.output)
   end
 
   # Retreives the title and artist for each music file in the user's collection
@@ -135,14 +136,14 @@ class Controllers::MusicController < Controllers::Controller
     limit_value = limit.nil? ? nil : limit.to_i?
     if !limit.nil? && (limit_value.nil? || limit_value < 0)
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << ExceptionResponse.new("Invalid limit parameter").to_json
+      ExceptionResponse.new("Invalid limit parameter").to_json(context.response.output)
       return
     end
 
     offset_value = offset.nil? ? nil : offset.to_i?
     if !offset.nil? && (offset_value.nil? || offset_value < 0)
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << ExceptionResponse.new("Invalid offset parameter").to_json
+      ExceptionResponse.new("Invalid offset parameter").to_json(context.response.output)
       return
     end
 
@@ -152,9 +153,10 @@ class Controllers::MusicController < Controllers::Controller
     # Send music data
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
-    context.response.output << GetMusicResponse.new(
+    response_body = GetMusicResponse.new(
       music: music_items
-    ).to_json
+    )
+    response_body.to_json(context.response.output)
   end
 
   # Retreives a music file from the user's collection
@@ -196,7 +198,7 @@ class Controllers::MusicController < Controllers::Controller
     music_file_exists = @music_repository.exists_by_id(user_id, music_id)
     if !music_file_exists
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      ExceptionResponse.new("Music file not found").to_json(context.response.output)
       return
     end
 
@@ -233,7 +235,7 @@ class Controllers::MusicController < Controllers::Controller
     music_updated = @music_repository.update(user_id, music_id, data.title, data.artist)
     unless music_updated
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      ExceptionResponse.new("Music file not found").to_json(context.response.output)
       return
     end
 
@@ -254,7 +256,7 @@ class Controllers::MusicController < Controllers::Controller
     file_removed = @music_repository.delete(user_id, music_id)
     unless file_removed
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      ExceptionResponse.new("Music file not found").to_json(context.response.output)
       return
     end
 

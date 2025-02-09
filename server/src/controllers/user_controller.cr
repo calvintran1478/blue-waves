@@ -38,7 +38,7 @@ class Controllers::UserController < Controllers::Controller
         login_user(context)
       else
         context.response.status = HTTP::Status::TOO_MANY_REQUESTS
-        context.response.output << ExceptionResponse.new("Too Many Requests").to_json
+        ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
       end
     when {"POST", "/logout".to_slice}
       logout_user(context)
@@ -62,7 +62,7 @@ class Controllers::UserController < Controllers::Controller
     user_exists = @user_repository.exists_by_email(data.email)
     if user_exists
       context.response.status = HTTP::Status::CONFLICT
-      context.response.output << ExceptionResponse.new("User with email already exists").to_json
+      ExceptionResponse.new("User with email already exists").to_json(context.response.output)
       return
     end
 
@@ -75,11 +75,12 @@ class Controllers::UserController < Controllers::Controller
     # Send success response
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::CREATED
-    context.response.output << RegisterResponse.new(
+    response_body = RegisterResponse.new(
       email: data.email,
       first_name: data.first_name,
       last_name: data.last_name
-    ).to_json
+    )
+    response_body.to_json(context.response.output)
   end
 
   # Logs in the user by providing an access token they can use to authenticate
@@ -97,14 +98,14 @@ class Controllers::UserController < Controllers::Controller
     user_id, password = @user_repository.get_login_password(data.email)
     if password.nil?
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << ExceptionResponse.new("User with email not found").to_json
+      ExceptionResponse.new("User with email not found").to_json(context.response.output)
       return
     end
 
     # Verify user password
     if !password.verify(data.password)
       context.response.status = HTTP::Status::UNAUTHORIZED
-      context.response.output << ExceptionResponse.new("Incorrect password").to_json
+      ExceptionResponse.new("Incorrect password").to_json(context.response.output)
       return
     end
 
@@ -134,9 +135,10 @@ class Controllers::UserController < Controllers::Controller
     # Send access token
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
-    context.response.output << LoginResponse.new(
+    response_body = LoginResponse.new(
       access_token: access_token
-    ).to_json
+    )
+    response_body.to_json(context.response.output)
   end
 
   # Returns a new refresh token access token pair the user can use to authenticate
@@ -202,9 +204,10 @@ class Controllers::UserController < Controllers::Controller
     # Send access token
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
-    context.response.output << RefreshTokenResponse.new(
+    response_body = RefreshTokenResponse.new(
       access_token: access_token
-    ).to_json
+    )
+    response_body.to_json(context.response.output)
   end
 
   # Logs out the user by invalidating their access token and preventing new
