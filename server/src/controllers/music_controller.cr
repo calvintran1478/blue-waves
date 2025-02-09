@@ -10,7 +10,7 @@ require "../repositories/music_repository"
 class Controllers::MusicController < Controllers::Controller
   include Validators::MusicValidator
 
-  def initialize(@music_repository : Repositories::MusicRepository, @auth_middleware : Middleware::AuthMiddleware)
+  def initialize(@music_repository : Repositories::MusicRepository, @auth_middleware : Middleware::AuthMiddleware, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users/music".size
   end
 
@@ -167,6 +167,14 @@ class Controllers::MusicController < Controllers::Controller
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
+
+    # Perform rate limiting
+    music_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}")
+    if !music_request_allowed
+      context.response.status = HTTP::Status::TOO_MANY_REQUESTS
+      ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+      return
+    end
 
     # Fetch music file and write contents to the response body
     @music_repository.get(user_id, music_id, context)
