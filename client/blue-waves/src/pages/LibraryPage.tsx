@@ -1,5 +1,7 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
 import { createAsync, A } from "@solidjs/router";
+import { openDB } from "idb";
+import { HTTPError } from "ky";
 import { getToken } from "../utils/token";
 import { api } from "../index.tsx";
 import AddMusicModal from "../components/AddMusicModal.tsx";
@@ -28,8 +30,46 @@ const LibraryPage = () => {
 
     const fetchCoverArt = async () => {
         setFetchCoverArtLoading(true);
-        try {
-            // Get cover art
+        // Open music database
+        const db = await openDB("musicFileDB", 1, {
+            upgrade(database) {
+                database.createObjectStore("musicFiles", { keyPath: "music_id" });
+                database.createObjectStore("coverArtFiles", { keyPath: "music_id" });
+            },
+        });
+
+        // Check music database for a cached value
+        const coverArtFileEntry = await db.get("coverArtFiles", selectedMusicId());
+        if (coverArtFileEntry !== undefined) {
+            // If a cached value exists perform a conditional request
+            try {
+                const musicArtResponse = await api.get(`users/music/${selectedMusicId()}/cover-art`, {
+                    headers: {
+                        "Authorization": `Bearer ${token()}`,
+                        "If-Modified-Since": coverArtFileEntry["last_modified"]
+                    }
+                })
+
+                // Cache miss: decode new data and update cache
+                const imageBuffer = await musicArtResponse.arrayBuffer();
+                const blob = new Blob([imageBuffer])
+                const url = window.URL.createObjectURL(blob);
+
+                await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: musicArtResponse.headers.get("Last-Modified")});
+
+                setCoverArtUrl(url);
+            } catch (e) {
+                const httpError = e as HTTPError;
+
+                // Cache hit: reuse saved data
+                if (httpError.response.status === 304) {
+                    const blob = new Blob([coverArtFileEntry["image_buffer"]]);
+                    const url = window.URL.createObjectURL(blob);
+                    setCoverArtUrl(url);
+                }
+            }
+        } else {
+            // If no cached value exists perform a normal request for the cover art file
             const musicArtResponse = await api.get(`users/music/${selectedMusicId()}/cover-art`, {
                 headers: {
                     "Authorization": `Bearer ${token()}`
@@ -40,10 +80,13 @@ const LibraryPage = () => {
             const imageBuffer = await musicArtResponse.arrayBuffer();
             const blob = new Blob([imageBuffer])
             const url = window.URL.createObjectURL(blob);
+
+            // Cache cover art file for later requests
+            await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: musicArtResponse.headers.get("Last-Modified")});
+
             setCoverArtUrl(url);
-        } finally {
-            setFetchCoverArtLoading(false);
         }
+        setFetchCoverArtLoading(false);
     }
 
     const preloadCoverArt = (musicId: string) => {
