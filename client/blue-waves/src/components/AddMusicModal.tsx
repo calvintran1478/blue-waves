@@ -1,5 +1,4 @@
 import { createSignal, Resource, Setter, Show } from "solid-js";
-import { createQuery } from "@tanstack/solid-query";
 import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
@@ -14,21 +13,26 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
     const [title, setTitle] = createSignal("");
     const [artist, setArtist] = createSignal("");
 
+    const [addMusicLoading, setAddMusicLoading] = createSignal(false);
+
     let musicInput!: HTMLInputElement;
     let artInput!: HTMLInputElement;
 
-    const addMusicQuery = createQuery(() => ({
-        queryKey: ["AddMusic"],
-        queryFn: async () => {
-            // Create form data
-            const data = new FormData();
-            data.append("title", title());
-            data.append("artist", artist());
-            data.append("musicFile", musicInput.files![0]);
-            if (artInput.files!.length != 0) {
-                data.append("artFile", artInput.files![0]);
-            }
+    const addMusic = async (event: Event) => {
+        // Prevent refresh
+        event.preventDefault();
 
+        // Create form data
+        const data = new FormData();
+        data.append("title", title());
+        data.append("artist", artist());
+        data.append("musicFile", musicInput.files![0]);
+        if (artInput.files!.length !== 0) {
+            data.append("artFile", artInput.files![0]);
+        }
+
+        setAddMusicLoading(true);
+        try {
             // Add music
             const addMusicResponse = await api.post("users/music", {
                 headers: {
@@ -44,14 +48,9 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
 
             // Close modal
             props.closeCallback();
-
-            return null;
+        } catch {
+            setAddMusicLoading(false);
         }
-    }));
-
-    const addMusic = (event: Event) => {
-        event.preventDefault();
-        addMusicQuery.refetch();
     }
 
     return (
@@ -70,9 +69,9 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
                 </div>
                 <input ref={musicInput} type="file" id="musicFile" class="w-80 m-6 mb-4" required/>
                 <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
-                <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={addMusicQuery.isFetching}>
+                <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={addMusicLoading()}>
                     <span class="mr-2">Add music</span>
-                    <Show when={addMusicQuery.isFetching}>
+                    <Show when={addMusicLoading()}>
                         <LoadingSpinner/>
                     </Show>
                 </button>

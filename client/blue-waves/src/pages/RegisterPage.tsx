@@ -1,6 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import { HTTPError } from "ky";
 import { api } from "../index.tsx";
 
 const RegisterPage = () => {
@@ -9,12 +9,19 @@ const RegisterPage = () => {
     const [firstName, setFirstName] = createSignal("");
     const [lastName, setLastName] = createSignal("");
 
+    const [registerLoading, setRegisterLoading] = createSignal(false);
+    const [registerError, setRegisterError] = createSignal("");
+
     const navigate = useNavigate();
 
-    const registerQuery = createQuery(() => ({
-        queryKey: ["Register"],
-        queryFn: async () => {
-            // Register user
+    const registerUser = async (event: Event) => {
+        // Prevent default refresh
+        event.preventDefault();
+
+        // Register user
+        setRegisterError("");
+        setRegisterLoading(true);
+        try{
             await api.post("users", {
                 json: {
                     email: email(),
@@ -26,14 +33,11 @@ const RegisterPage = () => {
 
             // Navigate to login page
             navigate("/login");
-
-            return null;
+        } catch (error) {
+            const httpError = error as HTTPError;
+            setRegisterLoading(false);
+            setRegisterError((await httpError.response.json() as { error: string }).error);
         }
-    }));
-
-    const registerUser = (event: Event) => {
-        event.preventDefault();
-        registerQuery.refetch();
     }
 
     return (
@@ -57,11 +61,11 @@ const RegisterPage = () => {
                         <label for="lastName">Last Name</label>
                         <input id="lastName" class="border-2 w-96 h-10" onChange={(event) => setLastName(event.target.value)} required/>
                     </div>
-                    <button class="border-2 rounded p-2 mt-4 text-lg" disabled={registerQuery.isFetching}>Create Account</button>
+                    <button class="border-2 rounded p-2 mt-4 text-lg" disabled={registerLoading()}>Create Account</button>
                 </form>
-                <Show when={registerQuery.isError}>
+                <Show when={registerError() !== ""}>
                     <div class="flex justify-center items-center border-2 p-4 m-6 w-96 h-12">
-                        <p>{registerQuery.error!.message}</p>
+                        <p>{registerError()}</p>
                     </div>
                 </Show>
             </div>

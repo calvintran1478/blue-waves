@@ -1,6 +1,5 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
 import { createAsync, A } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query"; 
 import { getToken } from "../utils/token";
 import { api } from "../index.tsx";
 import AddMusicModal from "../components/AddMusicModal.tsx";
@@ -11,6 +10,8 @@ const LibraryPage = () => {
     const [showUpdateMusicModal, setShowUpdateMusicModal] = createSignal(false);
     const [selectedMusicId, setSelectedMusicId] = createSignal("");
     const [coverArtUrl, setCoverArtUrl] = createSignal("");
+
+    const [fetchCoverArtLoading, setFetchCoverArtLoading] = createSignal(false);
 
     const token = createAsync(() => getToken());
 
@@ -25,9 +26,9 @@ const LibraryPage = () => {
         return musicResponse["music"]
     });
 
-    const fetchCoverArtQuery = createQuery(() => ({
-        queryKey: ["FetchCoverArt"],
-        queryFn: async() => {
+    const fetchCoverArt = async () => {
+        setFetchCoverArtLoading(true);
+        try {
             // Get cover art
             const musicArtResponse = await api.get(`users/music/${selectedMusicId()}/cover-art`, {
                 headers: {
@@ -40,15 +41,15 @@ const LibraryPage = () => {
             const blob = new Blob([imageBuffer])
             const url = window.URL.createObjectURL(blob);
             setCoverArtUrl(url);
-
-            return null;
+        } finally {
+            setFetchCoverArtLoading(false);
         }
-    }));
+    }
 
     const preloadCoverArt = (musicId: string) => {
         if (musicId !== selectedMusicId()) {
             setSelectedMusicId(musicId);
-            fetchCoverArtQuery.refetch();
+            fetchCoverArt();
         }
     }
 
@@ -76,7 +77,7 @@ const LibraryPage = () => {
             </div>
             <Show when={showUpdateMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <UpdateMusicModal token={token() as string} musicId={selectedMusicId} setMusicId={setSelectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate} coverArtUrl={coverArtUrl} fetchCoverArtQuery={fetchCoverArtQuery}/>
+                    <UpdateMusicModal token={token() as string} musicId={selectedMusicId} setMusicId={setSelectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate} coverArtUrl={coverArtUrl} fetchCoverArtLoading={fetchCoverArtLoading}/>
                 </div>
             </Show>
             <Show when={showAddMusicModal()}>

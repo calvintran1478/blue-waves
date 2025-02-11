@@ -1,18 +1,25 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import { HTTPError } from "ky";
 import { api } from "../index.tsx";
 
 const LoginPage = () => {
     const [email, setEmail] = createSignal("");
     const [password, setPassword] = createSignal("");
 
+    const [loginLoading, setLoginLoading] = createSignal(false);
+    const [loginError, setLoginError] = createSignal("");
+
     const navigate = useNavigate();
 
-    const loginQuery = createQuery(() => ({
-        queryKey: ["Login"],
-        queryFn: async () => {
-            // Login user
+    const loginUser = async (event: Event) => {
+        // Prevent refresh
+        event.preventDefault();
+
+        // Login user
+        setLoginError("");
+        setLoginLoading(true);
+        try {
             await api.post("users/login", {
                 json: {
                     email: email(),
@@ -23,14 +30,12 @@ const LoginPage = () => {
 
             // Navigate to home page
             navigate("/home");
-
-            return null;
+        } catch (error) {
+            const httpError = error as HTTPError;
+            setLoginLoading(false);
+            setLoginError((await httpError.response.json() as { error: string }).error);
         }
-    }));
 
-    const loginUser = async (event: Event) => {
-        event.preventDefault();
-        loginQuery.refetch();
     }
 
     return (
@@ -46,11 +51,11 @@ const LoginPage = () => {
                         <label for="password">Password</label>
                         <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => setPassword(event.target.value)} required/>
                     </div>
-                    <button class="border-2 rounded px-10 py-2 mt-6 text-lg" disabled={loginQuery.isFetching}>Login</button>
+                    <button class="border-2 rounded px-10 py-2 mt-6 text-lg" disabled={loginLoading()}>Login</button>
                 </form>
-                <Show when={loginQuery.isError}>
+                <Show when={loginError() !== ""}>
                     <div class="flex justify-center items-center border-2 p-4 m-6 w-96 h-12">
-                        <p>{loginQuery.error!.message}</p>
+                        <p>{loginError()}</p>
                     </div>
                 </Show>
             </div>
