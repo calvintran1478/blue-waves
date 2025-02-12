@@ -1,5 +1,5 @@
 import { A, useNavigate, createAsync } from "@solidjs/router";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import DropDownMenu from "../components/DropDownMenu.tsx";
 import { getToken } from "../utils/token";
 import { api } from "../index.tsx";
 
@@ -32,13 +32,9 @@ const HomePage = () => {
             </div>
             <div class="flex flex-col w-4/5">
                 <div class="flex justify-end">
-                    <div class="m-5 border-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger>Open</DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={logout}>Logout</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                    <div class="m-5">
+                        <DropDownMenu onSelect={logout}>
+                        </DropDownMenu>
                     </div>
                 </div>
                 <div class="flex justify-between h-20 p-6">
