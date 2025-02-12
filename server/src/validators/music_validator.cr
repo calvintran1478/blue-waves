@@ -66,7 +66,7 @@ module Validators::MusicValidator
     if music_file_size > MAX_MUSIC_FILE_SIZE
       music_file.delete
       art_file.delete if art_file.is_a?(File)
-      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
       ExceptionResponse.new("Music file size exceeds allowed limits").to_json(context.response.output)
       return
     end
@@ -75,7 +75,7 @@ module Validators::MusicValidator
     if !art_file.nil? && art_file_size > MAX_COVER_ART_FILE_SIZE
       music_file.delete
       art_file.delete
-      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
       ExceptionResponse.new("Cover art file size exceeds allowed limits").to_json(context.response.output)
       return
     end
@@ -146,7 +146,7 @@ module Validators::MusicValidator
 
     if art_file_size > MAX_COVER_ART_FILE_SIZE
       art_file.delete
-      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
       ExceptionResponse.new("Cover art file size exceeds allowed limits").to_json(context.response.output)
       return
     end
