@@ -33,14 +33,14 @@ module Validators::UserValidator
     # Check email is valid
     if !(Valid.email? data.email)
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << ExceptionResponse.new("Invalid email").to_json
+      ExceptionResponse.new("Invalid email").to_json(context.response.output)
       return
     end
 
     # Check that the entered first and last names are non-empty
     if data.first_name.empty?  || data.last_name.empty?
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << ExceptionResponse.new("First and last names cannot be empty").to_json
+      ExceptionResponse.new("First and last names cannot be empty").to_json(context.response.output)
       return
     end
 
@@ -48,7 +48,7 @@ module Validators::UserValidator
     data.first_name.each_char do |ch|
       if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json
+        ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json(context.response.output)
         return
       end
     end
@@ -56,7 +56,7 @@ module Validators::UserValidator
     data.last_name.each_char do |ch|
       if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json
+        ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json(context.response.output)
         return
       end
     end
@@ -64,7 +64,7 @@ module Validators::UserValidator
     # Check password is at least 8 characters
     if data.password.size < 8
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << ExceptionResponse.new("Password must be at least 8 characters").to_json
+      ExceptionResponse.new("Password must be at least 8 characters").to_json(context.response.output)
       return
     end
 
