@@ -36,7 +36,7 @@ const RegisterPage = () => {
         } catch (error) {
             const httpError = error as HTTPError;
             setRegisterLoading(false);
-            setRegisterError((await httpError.response.json() as { error: string }).error);
+            setRegisterError(await httpError.response.text());
         }
     }
 

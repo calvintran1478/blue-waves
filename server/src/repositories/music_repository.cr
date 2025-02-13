@@ -10,7 +10,6 @@ require "../schemas/music_schemas"
 # music table should be made though a MusicRepository object.
 class Repositories::MusicRepository < Repositories::Repository
   include Schemas::MusicSchemas
-  include Exceptions
 
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
     @music_uploader = Awscr::S3::FileUploader.new(@music_db)
@@ -127,7 +126,7 @@ class Repositories::MusicRepository < Repositories::Repository
       end
     rescue
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << ExceptionResponse.new("Music file not found").to_json
+      context.response.output << "Music file not found"
     end
   end
 
@@ -162,7 +161,7 @@ class Repositories::MusicRepository < Repositories::Repository
       end
     rescue
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << ExceptionResponse.new("Cover art file not found").to_json
+      context.response.output << "Cover art file not found"
     end
   end
 

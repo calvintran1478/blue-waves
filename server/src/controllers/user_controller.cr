@@ -38,7 +38,7 @@ class Controllers::UserController < Controllers::Controller
         login_user(context)
       else
         context.response.status = HTTP::Status::TOO_MANY_REQUESTS
-        ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+        context.response.output << "Too Many Requests"
       end
     when {"POST", "/logout".to_slice}
       logout_user(context)
@@ -62,7 +62,7 @@ class Controllers::UserController < Controllers::Controller
     user_exists = @user_repository.exists_by_email(data.email)
     if user_exists
       context.response.status = HTTP::Status::CONFLICT
-      ExceptionResponse.new("User with email already exists").to_json(context.response.output)
+      context.response.output << "User with email already exists"
       return
     end
 
@@ -98,14 +98,14 @@ class Controllers::UserController < Controllers::Controller
     user_id, password = @user_repository.get_login_password(data.email)
     if password.nil?
       context.response.status = HTTP::Status::NOT_FOUND
-      ExceptionResponse.new("User with email not found").to_json(context.response.output)
+      context.response.output << "User with email not found"
       return
     end
 
     # Verify user password
     if !password.verify(data.password)
       context.response.status = HTTP::Status::UNAUTHORIZED
-      ExceptionResponse.new("Incorrect password").to_json(context.response.output)
+      context.response.output << "Incorrect password"
       return
     end
 

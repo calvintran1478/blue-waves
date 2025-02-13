@@ -39,4 +39,3 @@ class Middleware::AuthMiddleware
     return payload["user_id"].as_s
   end
 end
-

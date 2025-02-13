@@ -2,11 +2,9 @@ require "http"
 require "http/server"
 require "http/status"
 require "../schemas/music_schemas"
-require "../exceptions/exception_response"
 
 module Validators::MusicValidator
   include Schemas::MusicSchemas
-  include Exceptions
 
   MAX_MUSIC_FILE_SIZE = 25_000_000 # 25,000,000 bytes, or 25MB
   MAX_COVER_ART_FILE_SIZE = 8_000_000 # 8,000,000 bytes, or 8MB
@@ -51,7 +49,7 @@ module Validators::MusicValidator
       music_file.delete if music_file.is_a?(File)
       art_file.delete if art_file.is_a?(File)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Malformed request").to_json(context.response.output)
+      context.response.output << "Malformed request"
       return
     end
 
@@ -59,7 +57,7 @@ module Validators::MusicValidator
     if music_file.nil?
       art_file.delete if art_file.is_a?(File)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("No music file found").to_json(context.response.output)
+      context.response.output << "No music file found"
       return
     end
 
@@ -67,7 +65,7 @@ module Validators::MusicValidator
       music_file.delete
       art_file.delete if art_file.is_a?(File)
       context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
-      ExceptionResponse.new("Music file size exceeds allowed limits").to_json(context.response.output)
+      context.response.output << "Music file size exceeds allowed limits"
       return
     end
 
@@ -76,7 +74,7 @@ module Validators::MusicValidator
       music_file.delete
       art_file.delete
       context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
-      ExceptionResponse.new("Cover art file size exceeds allowed limits").to_json(context.response.output)
+      context.response.output << "Cover art file size exceeds allowed limits"
       return
     end
 
@@ -85,7 +83,7 @@ module Validators::MusicValidator
       music_file.delete
       art_file.delete if art_file.is_a?(File)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Title cannot be blank").to_json(context.response.output)
+      context.response.output << "Title cannot be blank"
       return
     end
 
@@ -93,7 +91,7 @@ module Validators::MusicValidator
       music_file.delete
       art_file.delete if art_file.is_a?(File)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Artist cannot be blank").to_json(context.response.output)
+      context.response.output << "Artist cannot be blank"
       return
     end
 
@@ -103,7 +101,7 @@ module Validators::MusicValidator
         music_file.delete
         art_file.delete if art_file.is_a?(File)
         context.response.status = HTTP::Status::BAD_REQUEST
-        ExceptionResponse.new("Invalid title").to_json(context.response.output)
+        context.response.output << "Invalid title"
         return
       end
     end
@@ -133,21 +131,21 @@ module Validators::MusicValidator
       end
     rescue
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Malformed request").to_json(context.response.output)
+      context.response.output << "Malformed request"
       return
     end
 
     # Check that the cover art file exists and does not exceed size limits
     if art_file.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("No cover art file found").to_json(context.response.output)
+      context.response.output << "No cover art file found"
       return
     end
 
     if art_file_size > MAX_COVER_ART_FILE_SIZE
       art_file.delete
       context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
-      ExceptionResponse.new("Cover art file size exceeds allowed limits").to_json(context.response.output)
+      context.response.output << "Cover art file size exceeds allowed limits"
       return
     end
 
@@ -167,7 +165,7 @@ module Validators::MusicValidator
     # Check the given title is non-blank
     if data.title.blank?
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Title cannot be blank").to_json(context.response.output)
+      context.response.output << "Title cannot be blank"
       return
     end
 
@@ -175,7 +173,7 @@ module Validators::MusicValidator
     data.title.each_char do |ch|
       if ch == '/' || ch == '.'
         context.response.status = HTTP::Status::BAD_REQUEST
-        ExceptionResponse.new("Invalid title").to_json(context.response.output)
+        context.response.output << "Invalid title"
         return
       end
     end

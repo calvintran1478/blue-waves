@@ -33,7 +33,7 @@ const LoginPage = () => {
         } catch (error) {
             const httpError = error as HTTPError;
             setLoginLoading(false);
-            setLoginError((await httpError.response.json() as { error: string }).error);
+            setLoginError(await httpError.response.text());
         }
 
     }

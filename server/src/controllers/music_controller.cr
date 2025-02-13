@@ -91,7 +91,7 @@ class Controllers::MusicController < Controllers::Controller
     music_exists = @music_repository.exists_by_title(user_id, data.title)
     if music_exists
       context.response.status = HTTP::Status::CONFLICT
-      ExceptionResponse.new("Music with given title already exists").to_json(context.response.output)
+      context.response.output << "Music with given title already exists"
       return
     end
 
@@ -136,14 +136,14 @@ class Controllers::MusicController < Controllers::Controller
     limit_value = limit.nil? ? nil : limit.to_i?
     if !limit.nil? && (limit_value.nil? || limit_value < 0)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Invalid limit parameter").to_json(context.response.output)
+      context.response.output << "Invalid limit parameter"
       return
     end
 
     offset_value = offset.nil? ? nil : offset.to_i?
     if !offset.nil? && (offset_value.nil? || offset_value < 0)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Invalid offset parameter").to_json(context.response.output)
+      context.response.output << "Invalid offset parameter"
       return
     end
 
@@ -172,7 +172,7 @@ class Controllers::MusicController < Controllers::Controller
     music_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}")
     if !music_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
-      ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+      context.response.output << "Too Many Requests"
       return
     end
 
@@ -193,7 +193,7 @@ class Controllers::MusicController < Controllers::Controller
     get_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}/cover-art")
     if !get_cover_art_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
-      ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+      context.response.output << "Too Many Requests"
       return
     end
 
@@ -214,7 +214,7 @@ class Controllers::MusicController < Controllers::Controller
     set_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "PUT", "/api/v1/users/music/{music_id}/cover-art")
     if !set_cover_art_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
-      ExceptionResponse.new("Too Many Requests").to_json(context.response.output)
+      context.response.output << "Too Many Requests"
       return
     end
 
@@ -222,7 +222,7 @@ class Controllers::MusicController < Controllers::Controller
     music_file_exists = @music_repository.exists_by_id(user_id, music_id)
     if !music_file_exists
       context.response.status = HTTP::Status::NOT_FOUND
-      ExceptionResponse.new("Music file not found").to_json(context.response.output)
+      context.response.output << "Music file not found"
       return
     end
 
@@ -259,7 +259,7 @@ class Controllers::MusicController < Controllers::Controller
     music_updated = @music_repository.update(user_id, music_id, data.title, data.artist)
     unless music_updated
       context.response.status = HTTP::Status::NOT_FOUND
-      ExceptionResponse.new("Music file not found").to_json(context.response.output)
+      context.response.output << "Music file not found"
       return
     end
 
@@ -280,7 +280,7 @@ class Controllers::MusicController < Controllers::Controller
     file_removed = @music_repository.delete(user_id, music_id)
     unless file_removed
       context.response.status = HTTP::Status::NOT_FOUND
-      ExceptionResponse.new("Music file not found").to_json(context.response.output)
+      context.response.output << "Music file not found"
       return
     end
 

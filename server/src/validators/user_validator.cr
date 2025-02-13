@@ -1,11 +1,9 @@
 require "http/server"
 require "http/status"
 require "../schemas/user_schemas"
-require "../exceptions/exception_response"
 
 module Validators::UserValidator
   include Schemas::UserSchemas
-  include Exceptions
 
   # Validates POST requests sent to api/v1/users when registering an account.
   #
@@ -33,14 +31,14 @@ module Validators::UserValidator
     # Check email is valid
     if !(Valid.email? data.email)
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Invalid email").to_json(context.response.output)
+      context.response.output << "Invalid email"
       return
     end
 
     # Check that the entered first and last names are non-empty
     if data.first_name.empty?  || data.last_name.empty?
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("First and last names cannot be empty").to_json(context.response.output)
+      context.response.output << "First and last names cannot be empty"
       return
     end
 
@@ -48,7 +46,7 @@ module Validators::UserValidator
     data.first_name.each_char do |ch|
       if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
-        ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json(context.response.output)
+        context.response.output << "First and last names must consist of alphabetical characters"
         return
       end
     end
@@ -56,15 +54,15 @@ module Validators::UserValidator
     data.last_name.each_char do |ch|
       if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
-        ExceptionResponse.new("First and last names must consist of alphabetical characters").to_json(context.response.output)
+        context.response.output << "First and last names must consist of alphabetical characters"
         return
       end
     end
-    
+
     # Check password is at least 8 characters
     if data.password.size < 8
       context.response.status = HTTP::Status::BAD_REQUEST
-      ExceptionResponse.new("Password must be at least 8 characters").to_json(context.response.output)
+      context.response.output << "Password must be at least 8 characters"
       return
     end
 
