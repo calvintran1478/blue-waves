@@ -17,9 +17,12 @@ class Middleware::RateLimitMiddleware
     # Automatically refills and subtracts from the token bucket as needed upon
     # each successful call
     def rate_limit_request(user_id : String) : Bool
+      # Identify user bucket for this endpoint
+      bucket_id = "#{@http_method}:#{@endpoint}:#{user_id}"
+
       # Get bucket details from the user
-      tokens = @auth_db.hget("#{@http_method}:#{@endpoint}:#{user_id}", "tokens")
-      ts = @auth_db.hget("#{@http_method}:#{@endpoint}:#{user_id}", "ts")
+      tokens = @auth_db.hget(bucket_id, "tokens")
+      ts = @auth_db.hget(bucket_id, "ts")
 
       tokens = tokens.nil? ? @capacity : tokens.to_i
       ts = ts.nil? ? Time.utc.to_unix : ts.to_i64
@@ -39,7 +42,7 @@ class Middleware::RateLimitMiddleware
       # Save updated user bucket details if needed
       if allowed
         tokens -= 1
-        @auth_db.hmset("#{@http_method}:#{@endpoint}:#{user_id}", {tokens: tokens, ts: ts})
+        @auth_db.hmset(bucket_id, {tokens: tokens, ts: ts})
       end
 
       # Return whether the user is allowed to use the endpoint
