@@ -29,16 +29,6 @@ module Schemas::MusicSchemas
     end
   end
 
-  # Response body schema for server responses to /api/v1/users/music GET requests.
-  #
-  # Represents metadata for all music files in the user's collection
-  struct GetMusicResponse
-    include JSON::Serializable
-
-    def initialize(@music : Array(MusicMetadata))
-    end
-  end
-
   # Request body schema for PUT requests sent to /api/v1/users/music/{music_id}/cover-art
   #
   # The given file is expected to be a png or jpeg file, and should be sent as
