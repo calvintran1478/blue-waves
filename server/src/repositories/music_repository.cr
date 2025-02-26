@@ -3,6 +3,7 @@ require "uuid"
 require "awscr-s3"
 require "./repository"
 require "../schemas/music_schemas"
+require "../utils/str"
 
 # Provides an easy-to-use interface for accessing the music table in the database.
 #
@@ -99,8 +100,11 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get("user_id", "music_id", context)
   # ```
-  def get(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
+  def get(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context) : Nil
     begin
+      # Get object id using the given parameters
+      object_id = Utils::Str.combine_bytes(user_id, "/", music_id)
+
       # Check range header for requested bytes
       range_header = context.request.headers["Range"]?
 
@@ -110,14 +114,14 @@ class Repositories::MusicRepository < Repositories::Repository
         s3_headers = {"Range" => range_header}
 
         # Fetch requested byte range from storage bucket
-        @music_db.get_object("blue-waves", "#{user_id}/#{music_id}", s3_headers) do |music_file|
+        @music_db.get_object("blue-waves", object_id, s3_headers) do |music_file|
           context.response.content_type = "audio/mpeg"
           context.response.status = HTTP::Status::PARTIAL_CONTENT
           IO.copy(music_file.body_io, context.response.output)
         end
       else
         # Fetch complete music file from storage bucket
-        @music_db.get_object("blue-waves", "#{user_id}/#{music_id}") do |music_file|
+        @music_db.get_object("blue-waves", object_id) do |music_file|
           context.response.content_type = "audio/mpeg"
           context.response.headers["Cache-Control"] = "private"
           context.response.status = HTTP::Status::OK
@@ -135,12 +139,15 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get_cover_art("user_id", "music_id", context)
   # ```
-  def get_cover_art(user_id : String, music_id : String, context : HTTP::Server::Context) : Nil
+  def get_cover_art(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context) : Nil
     begin
+      # Get object id using the given parameters
+      object_id = Utils::Str.combine_bytes(user_id, "/", music_id, "/cover-art")
+
       # Check for conditional request
       modified_since = context.request.headers["If-Modified-Since"]?
       if !modified_since.nil?
-        headers = @music_db.head_object("blue-waves", "#{user_id}/#{music_id}/cover-art")
+        headers = @music_db.head_object("blue-waves", object_id)
         threshold_time = HTTP.parse_time(modified_since)
 
         if !threshold_time.nil? && headers.last_modified <= threshold_time
@@ -152,7 +159,7 @@ class Repositories::MusicRepository < Repositories::Repository
       end
 
       # Fetch music cover art from storage bucket
-      @music_db.get_object("blue-waves", "#{user_id}/#{music_id}/cover-art") do |art_file|
+      @music_db.get_object("blue-waves", object_id) do |art_file|
         context.response.content_type = "image/jpeg"
         context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
         context.response.headers["Cache-Control"] = "private, no-cache"
@@ -172,17 +179,20 @@ class Repositories::MusicRepository < Repositories::Repository
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
   def set_cover_art(user_id : String, music_id : String, art_file : File) : Bool
+    # Get object id using the given parameters
+    object_id = "#{user_id}/#{music_id}/cover-art"
+
     # Check if cover art is being set for the first time
     first_created = false
     begin
-      @music_db.head_object("blue-waves", "#{user_id}/#{music_id}/cover-art")
+      @music_db.head_object("blue-waves", object_id)
     rescue
       first_created = true
     end
 
     # Set cover art
     File.open(art_file.path, "r") do |file|
-      @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}/cover-art", file)
+      @music_uploader.upload("blue-waves", object_id, file)
     end
 
     return first_created

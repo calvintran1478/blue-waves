@@ -36,9 +36,9 @@ class Controllers::MusicController < Controllers::Controller
 
         # Handle request
         if slash_index.nil?
-          get_music_file(context, String.new(sub_path))
+          get_music_file(context, sub_path)
         elsif sub_path[slash_index...] == "/cover-art".to_slice
-          get_music_cover_art(context, String.new(sub_path[...slash_index]))
+          get_music_cover_art(context, sub_path[...slash_index])
         else
           context.response.status = HTTP::Status::NOT_FOUND
         end
@@ -163,7 +163,7 @@ class Controllers::MusicController < Controllers::Controller
   #
   # Method: GET
   # Path: /api/v1/users/music/{music_id}
-  def get_music_file(context : HTTP::Server::Context, music_id : String) : Nil
+  def get_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -184,7 +184,7 @@ class Controllers::MusicController < Controllers::Controller
   #
   # Method: GET
   # Path: /api/v1/users/music/{music_id}/cover-art
-  def get_music_cover_art(context : HTTP::Server::Context, music_id : String) : Nil
+  def get_music_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
