@@ -147,16 +147,10 @@ class Controllers::MusicController < Controllers::Controller
       return
     end
 
-    # Fetch music data
-    music_items = @music_repository.list(user_id, limit_value, offset_value)
-
     # Send music data
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
-    response_body = GetMusicResponse.new(
-      music: music_items
-    )
-    response_body.to_json(context.response.output)
+    @music_repository.list(user_id, context, limit_value, offset_value)
   end
 
   # Retreives a music file from the user's collection

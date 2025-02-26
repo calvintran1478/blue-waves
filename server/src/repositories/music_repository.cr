@@ -64,33 +64,42 @@ class Repositories::MusicRepository < Repositories::Repository
     end
   end
 
-  # Lists titles and artists from music files in the user's collection
+  # Lists metadata from music files in the user's collection and writes contents
+  # to the context response body as JSON
   #
   # limit and offset may be provided to retreive a paginated selection. limit
   # specifies the maximum number of entries to retreive and offset specifies
   # how many entries to skip from the beginning before searching
-  # ```
-  # music_repository.list("user_id") # => [MusicMetadata(@music_id="music_id1", @title="Title1", @artist="Artist1"), ...]
   #
-  # music_repository.list("user_id", 10, 10) # => [MusicMetadata(@music_id="music_id11", @title="Title11", @artist="Artist11"), ..., MusicMetadata(@music_id="music_id20", @title="Title20", @artist="Artist20")]
   # ```
-  def list(user_id : String, limit : (Int32 | Nil) = nil, offset : (Int32 | Nil) = nil) : Array(MusicMetadata)
-    # Create array to store music entries
-    music_items = limit.nil? ? Array(MusicMetadata).new : Array(MusicMetadata).new(limit)
-
+  # music_repository.list("user_id", context)
+  #
+  # music_repository.list("user_id", context, 10, 10)
+  # ```
+  def list(user_id : String, context : HTTP::Server::Context, limit : (Int32 | Nil) = nil, offset : (Int32 | Nil) = nil) : Nil
     # Convert limit and offset to default values if not provided
     limit_value = limit.nil? ? "ALL" : limit
     offset_value = offset.nil? ? 0 : offset
 
     # Fetch music information
+    initialized = false
+    context.response.output << "{\"music\":["
     @db.query("SELECT music_id, title, artist FROM music WHERE user_id=$1 ORDER BY creation_time DESC LIMIT #{limit_value} OFFSET #{offset_value}", user_id) do |rs|
       rs.each do
         music_id, title, artist = rs.read(String, String, String)
-        music_items << MusicMetadata.new(music_id, title, artist)
+        if initialized
+          context.response.output << ","
+        else
+          initialized = true
+        end
+        context.response.output << "{"
+        context.response.output << "\"music_id\":\"" << music_id << "\","
+        context.response.output << "\"title\":\"" << title << "\","
+        context.response.output << "\"artist\":\"" << artist << "\""
+        context.response.output << "}"
       end
     end
-
-    return music_items
+    context.response.output << "]}"
   end
 
   # Retreives a single music file in the user's collection based on music id

@@ -39,14 +39,6 @@ module Schemas::MusicSchemas
     end
   end
 
-  # Represents metadata for a single music file in the user's collection
-  struct MusicMetadata
-    include JSON::Serializable
-
-    def initialize(@music_id : String, @title : String, @artist : String)
-    end
-  end
-
   # Request body schema for PUT requests sent to /api/v1/users/music/{music_id}/cover-art
   #
   # The given file is expected to be a png or jpeg file, and should be sent as
