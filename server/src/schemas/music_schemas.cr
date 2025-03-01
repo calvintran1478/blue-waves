@@ -23,9 +23,16 @@ module Schemas::MusicSchemas
   #
   # Represents the music file entered into the database
   struct AddMusicResponse
-    include JSON::Serializable
 
     def initialize(@music_id : String, @title : String, @artist : String)
+    end
+
+    def to_json(io : IO) : Nil
+      io << "{"
+      io << "\"music_id\":\"" << @music_id << "\","
+      io << "\"title\":\"" << @title << "\","
+      io << "\"artist\":\"" << @artist << "\""
+      io << "}"
     end
   end
 
