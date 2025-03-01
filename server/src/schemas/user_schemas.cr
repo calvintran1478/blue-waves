@@ -24,9 +24,16 @@ module Schemas::UserSchemas
   #
   # Represents the registered user in the database.
   struct RegisterResponse
-    include JSON::Serializable
 
     def initialize(@email : String, @first_name : String, @last_name : String)
+    end
+
+    def to_json(io : IO) : Nil
+      io << "{"
+      io << "\"email\":\"" << @email << "\","
+      io << "\"first_name\":\"" << @first_name << "\","
+      io << "\"last_name\":\"" << @last_name << "\""
+      io << "}"
     end
   end
 
