@@ -8,7 +8,6 @@ module Schemas::MusicSchemas
   # is expected to be an mp3 file with size limits permitted by the user's
   # account type. These fields should be sent as form data.
   struct AddMusicRequest
-    include JSON::Serializable
 
     getter title : String
     getter artist : String
@@ -41,7 +40,6 @@ module Schemas::MusicSchemas
   # The given file is expected to be a png or jpeg file, and should be sent as
   # form data.
   struct SetCoverArtRequest
-    include JSON::Serializable
 
     getter art_file : File
 
