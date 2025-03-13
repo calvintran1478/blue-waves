@@ -5,6 +5,7 @@ require "./controller"
 require "../schemas/music_schemas"
 require "../validators/music_validator"
 require "../repositories/music_repository"
+require "../utils/str"
 
 # Controller for handling requests made to the music resource
 class Controllers::MusicController < Controllers::Controller
@@ -50,7 +51,7 @@ class Controllers::MusicController < Controllers::Controller
         sub_path = path[1...]
         slash_index = sub_path.index('/'.ord)
         if sub_path[slash_index...] == "/cover-art".to_slice
-          set_cover_art(context, String.new(sub_path[...slash_index]))
+          set_cover_art(context, sub_path[...slash_index])
         else
           context.response.status = HTTP::Status::NOT_FOUND
         end
@@ -59,13 +60,13 @@ class Controllers::MusicController < Controllers::Controller
       end
     when {"PATCH", _}
       if path.size > 1 && path[0] == '/'.ord
-        update_music(context, String.new(path[1...]))
+        update_music(context, path[1...])
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
       if path.size > 1 && path[0] == '/'.ord
-        delete_music_file(context, String.new(path[1...]))
+        delete_music_file(context, path[1...])
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -199,7 +200,7 @@ class Controllers::MusicController < Controllers::Controller
   #
   # Method: PUT
   # Path: /api/v1/users/music/{music_id}/cover-art
-  def set_cover_art(context : HTTP::Server::Context, music_id : String) : Nil
+  def set_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -213,7 +214,7 @@ class Controllers::MusicController < Controllers::Controller
     end
 
     # Check if music file exists
-    music_file_exists = @music_repository.exists_by_id(user_id, music_id)
+    music_file_exists = @music_repository.exists_by_id(user_id, String.new(music_id))
     if !music_file_exists
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -230,7 +231,7 @@ class Controllers::MusicController < Controllers::Controller
     # Send success response
     if cover_art_created
       context.response.status = HTTP::Status::CREATED
-      context.response.headers["Location"] = "/users/music/#{music_id}/cover-art"
+      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", music_id, "/cover-art")
     else
       context.response.status = HTTP::Status::NO_CONTENT
     end
@@ -240,7 +241,7 @@ class Controllers::MusicController < Controllers::Controller
   #
   # Method: PATCH
   # Path: /api/v1/users/music/{music_id}
-  def update_music(context : HTTP::Server::Context, music_id : String) : Nil
+  def update_music(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -250,7 +251,7 @@ class Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Update music file
-    music_updated = @music_repository.update(user_id, music_id, data.title, data.artist)
+    music_updated = @music_repository.update(user_id, String.new(music_id), data.title, data.artist)
     unless music_updated
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -265,13 +266,13 @@ class Controllers::MusicController < Controllers::Controller
   #
   # Method: DELETE
   # Path: /api/v1/users/music/{music_id}
-  def delete_music_file(context : HTTP::Server::Context, music_id : String) : Nil
+  def delete_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Delete music file
-    file_removed = @music_repository.delete(user_id, music_id)
+    file_removed = @music_repository.delete(user_id, String.new(music_id))
     unless file_removed
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"

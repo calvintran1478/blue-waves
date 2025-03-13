@@ -187,9 +187,9 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
-  def set_cover_art(user_id : String, music_id : String, art_file : File) : Bool
+  def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : File) : Bool
     # Get object id using the given parameters
-    object_id = "#{user_id}/#{music_id}/cover-art"
+    object_id = Utils::Str.combine_bytes(user_id, "/", music_id, "/cover-art")
 
     # Check if cover art is being set for the first time
     first_created = false
