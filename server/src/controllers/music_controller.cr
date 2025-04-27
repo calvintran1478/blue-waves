@@ -26,20 +26,20 @@ class Controllers::MusicController < Controllers::Controller
       add_music(context)
     when {"GET", _}
       # Fetch music metadata
-      if path.size == 0 || path[0] == '?'.ord
+      if path.size == 0 || path.unsafe_fetch(0) == '?'.ord
         get_music(context)
 
       # Fetch music file or cover art
-      elsif path.size > 1 && path[0] == '/'.ord
+      elsif path.size > 1 && path.unsafe_fetch(0) == '/'.ord
         # Determine if cover art or music file is requested
-        sub_path = path[1...]
-        slash_index = sub_path.index('/'.ord)
+        sub_path_ptr = path.to_unsafe + 1
+        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1)
 
         # Handle request
-        if slash_index.nil?
-          get_music_file(context, sub_path)
-        elsif sub_path[slash_index...] == "/cover-art".to_slice
-          get_music_cover_art(context, sub_path[...slash_index])
+        if slash_ptr.null?
+          get_music_file(context, Bytes.new(sub_path_ptr, path.size - 1))
+        elsif context.request.resource.ends_with?("cover-art")
+          get_music_cover_art(context, Bytes.new(sub_path_ptr, slash_ptr.as(UInt8*) - sub_path_ptr))
         else
           context.response.status = HTTP::Status::NOT_FOUND
         end
@@ -47,11 +47,12 @@ class Controllers::MusicController < Controllers::Controller
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PUT", _}
-      if path.size > 1 && path[0] == '/'.ord
-        sub_path = path[1...]
-        slash_index = sub_path.index('/'.ord)
-        if sub_path[slash_index...] == "/cover-art".to_slice
-          set_cover_art(context, sub_path[...slash_index])
+      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
+        sub_path_ptr = path.to_unsafe + 1
+        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1)
+
+        if !slash_ptr.null? && context.request.resource.ends_with?("cover-art")
+          set_cover_art(context, Bytes.new(sub_path_ptr, slash_ptr.as(UInt8*) - sub_path_ptr))
         else
           context.response.status = HTTP::Status::NOT_FOUND
         end
@@ -59,14 +60,14 @@ class Controllers::MusicController < Controllers::Controller
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
-      if path.size > 1 && path[0] == '/'.ord
-        update_music(context, path[1...])
+      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
+        update_music(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
-      if path.size > 1 && path[0] == '/'.ord
-        delete_music_file(context, path[1...])
+      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
+        delete_music_file(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
