@@ -75,12 +75,11 @@ class Controllers::UserController < Controllers::Controller
     # Send success response
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::CREATED
-    response_body = RegisterResponse.new(
+    context.response.output << RegisterResponse.new(
       email: data.email,
       first_name: data.first_name,
       last_name: data.last_name
     )
-    response_body.to_json(context.response.output)
   end
 
   # Logs in the user by providing an access token they can use to authenticate
@@ -121,7 +120,7 @@ class Controllers::UserController < Controllers::Controller
     refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
-    cookie = HTTP::Cookie.new(
+    context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
       value: refresh_token,
       max_age: Time::Span.new(hours: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i),
@@ -129,8 +128,6 @@ class Controllers::UserController < Controllers::Controller
       secure: true,
       samesite: HTTP::Cookie::SameSite::Strict
     )
-
-    context.response.cookies << cookie
 
     # Send access token
     context.response.content_type = "text/plain"
@@ -170,7 +167,7 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Check the sequence number is as expected
-    if (sequence_number != expected_sequence_number.to_i)
+    if sequence_number != expected_sequence_number.to_i
       @auth_db.del(token_family_id)
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -187,7 +184,7 @@ class Controllers::UserController < Controllers::Controller
     refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
-    cookie = HTTP::Cookie.new(
+    context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
       value: refresh_token,
       max_age: Time::Span.new(hours: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i),
@@ -195,8 +192,6 @@ class Controllers::UserController < Controllers::Controller
       secure: true,
       samesite: HTTP::Cookie::SameSite::Strict
     )
-
-    context.response.cookies << cookie
 
     # Send access token
     context.response.content_type = "text/plain"
@@ -254,13 +249,12 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Remove refresh cookie from the client
-    cookie = HTTP::Cookie.new(
+    context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
       value: "",
       samesite: HTTP::Cookie::SameSite::Strict,
       expires: Time::UNIX_EPOCH
     )
-    context.response.cookies << cookie
 
     # Send success response
     context.response.status = HTTP::Status::NO_CONTENT

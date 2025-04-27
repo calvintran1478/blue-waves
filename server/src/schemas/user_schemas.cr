@@ -28,7 +28,7 @@ module Schemas::UserSchemas
     def initialize(@email : String, @first_name : String, @last_name : String)
     end
 
-    def to_json(io : IO) : Nil
+    def to_s(io : IO) : Nil
       io << "{"
       io << "\"email\":\"" << @email << "\","
       io << "\"first_name\":\"" << @first_name << "\","
