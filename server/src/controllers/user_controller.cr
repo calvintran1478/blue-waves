@@ -213,23 +213,22 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Extract access token
-    delimiter_index = auth_header.index(" ")
-    if delimiter_index.nil? || delimiter_index == auth_header.size - 1 || auth_header[...delimiter_index] != "Bearer"
+    if auth_header.size <= 7 || !auth_header.starts_with?("Bearer ")
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
-    access_token = auth_header[(delimiter_index + 1)...]
+    access_token = auth_header.unsafe_byte_slice(7)
 
     # Check if the access token is black listed
-    black_listed = @auth_db.exists("black-list:#{access_token}")
-    if black_listed == 1
+    black_list_token_id = Utils::Str.combine_bytes("black-list:", access_token)
+    if @auth_db.exists(black_list_token_id) == 1
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
 
     # Parse access token and get user id
     begin
-      payload, _ = JWT.decode(access_token, ENV["API_SECRET"], JWT::Algorithm::HS256)
+      payload, _ = JWT.decode(String.new(access_token), ENV["API_SECRET"], JWT::Algorithm::HS256)
     rescue
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -239,7 +238,7 @@ class Controllers::UserController < Controllers::Controller
     remaining_time = payload["exp"].as_i - Time.utc.to_unix
 
     # Add access token to black list
-    @auth_db.set("black-list:#{access_token}", "", ex: remaining_time)
+    @auth_db.set(black_list_token_id, "", ex: remaining_time)
 
     # Invalidate token family if refresh token is not expired
     begin
