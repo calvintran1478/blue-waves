@@ -38,7 +38,7 @@ auth_db = Redis::PooledClient.new(host: AUTH_DB_HOST, port: AUTH_DB_PORT.to_i, p
 music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRET, endpoint: MUSIC_DB_ENDPOINT)
 
 # Initialize middleware
-auth_middleware = Middleware::AuthMiddleware.new(auth_db)
+auth_middleware = Middleware::AuthMiddleware.new(auth_db, ENV["API_SECRET"])
 token_buckets = Utils::Config.load_rate_limit_config("rate_limit.conf", auth_db)
 rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_buckets)
 
