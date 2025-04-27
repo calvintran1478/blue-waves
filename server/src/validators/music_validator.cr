@@ -155,9 +155,8 @@ module Validators::MusicValidator
 
   def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)
     # Parse JSON body
-    begin
-      data = UpdateMusicRequest.from_json(context.request.body.as(IO))
-    rescue
+    data = UpdateMusicRequest.from_json(context.request.body.as(IO)) rescue nil
+    if data.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
