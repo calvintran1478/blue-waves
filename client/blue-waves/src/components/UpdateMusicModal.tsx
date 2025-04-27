@@ -1,7 +1,6 @@
-import { createSignal, createResource, onMount, Switch, Match, Accessor, Resource, Setter, Show } from "solid-js";
+import { createSignal, createResource, Switch, Match, Accessor, Resource, Setter, Show } from "solid-js";
 import { until } from "@solid-primitives/promise"; 
 import { openDB } from "idb";
-import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Expected fields for each music entry
@@ -12,18 +11,13 @@ interface MusicEntry {
 }
 
 const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtLoading: Accessor<boolean>}) => {
-    const [title, setTitle] = createSignal("");
-    const [artist, setArtist] = createSignal("");
-    let artInput!: HTMLInputElement;
-
+    const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId())!
     const [setCoverArtLoading, setSetCoverArtLoading] = createSignal(false);
     const [deleteMusicLoading, setDeleteMusicLoading] = createSignal(false);
 
-    onMount(() => {
-        const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId());
-        setTitle(musicEntry!["title"]);
-        setArtist(musicEntry!["artist"]);
-    })
+    let title = musicEntry["title"];
+    let artist = musicEntry["artist"];
+    let artInput!: HTMLInputElement;
 
     const [coverArtFile] = createResource(async () => {
         await until(() => !props.fetchCoverArtLoading());
@@ -32,34 +26,37 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
 
     const updateMusic = async() => {
         // Update music metadata
-        await api.patch(`users/music/${props.musicId()}`, {
+        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
+            method: "PATCH",
             headers: {
+                "Content-Type": "application/json",
                 "Authorization": `Bearer ${props.token}`
             },
-            json: {
-                title: title(),
-                artist: artist()
-            }
+            body: JSON.stringify({
+                title: title,
+                artist: artist
+            }),
         });
 
-        // Update music entry
-        const newMusicEntries = [...props.musicEntries()!];
-        const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
-        newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title(), "artist": artist()};
-        props.setMusicEntries(newMusicEntries);
+        if (response.ok) {
+            // Update music entry
+            const newMusicEntries = [...props.musicEntries()!];
+            const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
+            newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title, "artist": artist};
+            props.setMusicEntries(newMusicEntries);
+        }
     }
 
     const deleteMusic = async(event: Event) => {
         event.preventDefault();
         setDeleteMusicLoading(true);
-        try {
-            // Delete music
-            await api.delete(`users/music/${props.musicId()}`, {
-                headers: {
-                    "Authorization": `Bearer ${props.token}`
-                }
-            });
 
+        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${props.token}` },
+        });
+
+        if (response.ok) {
             // Delete music entry
             const newMusicEntries = [...props.musicEntries()!];
             const deleteIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
@@ -78,9 +75,9 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
 
             // Close modal
             props.closeCallback();
-        } catch {
-            setDeleteMusicLoading(false);
         }
+
+        setDeleteMusicLoading(false);
     }
 
     const setCoverArt = async () => {
@@ -90,19 +87,17 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
 
         // Set cover art
         setSetCoverArtLoading(true);
-        try {
-            await api.put(`users/music/${props.musicId()}/cover-art`, {
-                headers: {
-                    "Authorization": `Bearer ${props.token}`
-                },
-                body: data
-            });
+        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}/cover-art`, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${props.token}` },
+            body: data
+        })
 
+        if (response.ok) {
             // Invalidate cover art cache
             props.setMusicId("");
-        } catch {
-            setSetCoverArtLoading(false);
         }
+        setSetCoverArtLoading(false);
     }
 
     const handleUpdate = async (event: Event) => {
@@ -130,11 +125,11 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
                 <form onSubmit={handleUpdate} class="flex flex-col justify-center items-center">
                     <div class="flex items-center m-4">
                         <label for="title" class="text-lg m-2">Title</label>
-                        <input id="title" class="border-2 m-2 w-60 h-8" value={title()} onChange={(event) => setTitle(event.target.value)}/>
+                        <input id="title" class="border-2 m-2 w-60 h-8" value={title} onChange={(event) => {title = event.target.value}}/>
                     </div>
                     <div class="flex items-center m-4">
                         <label for="artist" class="text-lg m-2">Artist</label>
-                        <input id="artist" class="border-2 m-2 w-60 h-8" value={artist()} onChange={(event) => setArtist(event.target.value)}/>
+                        <input id="artist" class="border-2 m-2 w-60 h-8" value={artist} onChange={(event) => {artist = event.target.value}}/>
                     </div>
                     <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
                     <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={setCoverArtLoading()}>

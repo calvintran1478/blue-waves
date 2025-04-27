@@ -1,5 +1,4 @@
 import { createSignal, Resource, Setter, Show } from "solid-js";
-import { api } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Expected fields for each music entry
@@ -10,8 +9,8 @@ interface MusicEntry {
 }
 
 const AddMusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
-    const [title, setTitle] = createSignal("");
-    const [artist, setArtist] = createSignal("");
+    let title = "";
+    let artist = "";
 
     const [addMusicLoading, setAddMusicLoading] = createSignal(false);
 
@@ -23,34 +22,31 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
         event.preventDefault();
 
         // Create form data
-        const data = new FormData();
-        data.append("title", title());
-        data.append("artist", artist());
-        data.append("musicFile", musicInput.files![0]);
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("artist", artist);
+        formData.append("musicFile", musicInput.files![0]);
         if (artInput.files!.length !== 0) {
-            data.append("artFile", artInput.files![0]);
+            formData.append("artFile", artInput.files![0]);
         }
 
         setAddMusicLoading(true);
-        try {
-            // Add music
-            const addMusicResponse = await api.post("users/music", {
-                headers: {
-                    "Authorization": `Bearer ${props.token}`
-                },
-                body: data
-            }).json<MusicEntry>();
+        const response = await fetch("http://localhost:8080/api/v1/users/music", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${props.token}` },
+            body: formData
+        });
 
+        if (response.ok) {
             // Add music entry to list
             const newMusicEntries = [...props.musicEntries()!];
-            newMusicEntries!.unshift({"music_id": addMusicResponse["music_id"], "title": addMusicResponse["title"], "artist": addMusicResponse["artist"]});
+            newMusicEntries!.unshift(await response!.json());
             props.setMusicEntries(newMusicEntries);
 
             // Close modal
             props.closeCallback();
-        } catch {
-            setAddMusicLoading(false);
         }
+        setAddMusicLoading(false);
     }
 
     return (
@@ -61,11 +57,11 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
             <form onSubmit={addMusic} class="flex flex-col items-center">
                 <div class="flex items-center m-4">
                     <label for="title" class="text-lg m-2">Title</label>
-                    <input id="title" class="border-2 m-2 w-60 h-8" onChange={(event) => setTitle(event.target.value)} required/>
+                    <input id="title" class="border-2 m-2 w-60 h-8" onChange={(event) => {title = event.target.value}} required/>
                 </div>
                 <div class="flex items-center m-4">
                     <label for="artist" class="text-lg m-2">Artist</label>
-                    <input id="artist" class="border-2 m-2 w-60 h-8" onChange={(event) => setArtist(event.target.value)} required/>
+                    <input id="artist" class="border-2 m-2 w-60 h-8" onChange={(event) => {artist = event.target.value}} required/>
                 </div>
                 <input ref={musicInput} type="file" id="musicFile" class="w-80 m-6 mb-4" required/>
                 <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>

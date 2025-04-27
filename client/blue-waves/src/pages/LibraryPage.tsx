@@ -1,9 +1,7 @@
 import { createSignal, createResource, For, Show, Suspense } from "solid-js";
 import { createAsync, A } from "@solidjs/router";
 import { openDB } from "idb";
-import { HTTPError } from "ky";
 import { getToken } from "../utils/token";
-import { api } from "../index.tsx";
 import AddMusicModal from "../components/AddMusicModal.tsx";
 import UpdateMusicModal from "../components/UpdateMusicModal.tsx";
 
@@ -19,13 +17,13 @@ const LibraryPage = () => {
 
     const [musicEntries, modifyMusicEntries] = createResource(token, async () => {
         // Get music entries
-        const musicResponse = await api.get("users/music", {
-            headers: {
-                "Authorization": `Bearer ${token()}`
-            }
-        }).json<{"music": {"music_id": string, "title": string, "artist": string}[]}>();
+        const response = await fetch("http://localhost:8080/api/v1/users/music", {
+            headers: { "Authorization": `Bearer ${token()}` }
+        });
 
-        return musicResponse["music"]
+        if (response.ok) {
+            return await response.json();
+        }
     });
 
     const fetchCoverArt = async () => {
@@ -42,47 +40,41 @@ const LibraryPage = () => {
         const coverArtFileEntry = await db.get("coverArtFiles", selectedMusicId());
         if (coverArtFileEntry !== undefined) {
             // If a cached value exists perform a conditional request
-            try {
-                const musicArtResponse = await api.get(`users/music/${selectedMusicId()}/cover-art`, {
-                    headers: {
-                        "Authorization": `Bearer ${token()}`,
-                        "If-Modified-Since": coverArtFileEntry["last_modified"]
-                    }
-                })
-
-                // Cache miss: decode new data and update cache
-                const imageBuffer = await musicArtResponse.arrayBuffer();
-                const blob = new Blob([imageBuffer])
-                const url = window.URL.createObjectURL(blob);
-
-                await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: musicArtResponse.headers.get("Last-Modified")});
-
-                setCoverArtUrl(url);
-            } catch (e) {
-                const httpError = e as HTTPError;
-
-                // Cache hit: reuse saved data
-                if (httpError.response.status === 304) {
-                    const blob = new Blob([coverArtFileEntry["image_buffer"]]);
-                    const url = window.URL.createObjectURL(blob);
-                    setCoverArtUrl(url);
-                }
-            }
-        } else {
-            // If no cached value exists perform a normal request for the cover art file
-            const musicArtResponse = await api.get(`users/music/${selectedMusicId()}/cover-art`, {
+            const response = await fetch(`http://localhost:8080/api/v1/users/music/${selectedMusicId()}/cover-art`, {
                 headers: {
-                    "Authorization": `Bearer ${token()}`
+                    "Authorization": `Bearer ${token()}`,
+                    "If-Modified-Since": coverArtFileEntry["last_modified"]
                 }
             });
 
+            if (response.ok) {
+                // Cache miss: decode new data and update cache
+                const imageBuffer = await response.arrayBuffer();
+                const blob = new Blob([imageBuffer])
+                const url = window.URL.createObjectURL(blob);
+
+                await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: response.headers.get("Last-Modified")});
+
+                setCoverArtUrl(url);
+            } else if (response.status === 304) {
+                const blob = new Blob([coverArtFileEntry["image_buffer"]]);
+                const url = window.URL.createObjectURL(blob);
+                setCoverArtUrl(url);
+            }
+           
+        } else {
+            // If no cached value exists perform a normal request for the cover art file
+            const response = await fetch(`http://localhost:8080/api/v1/users/music/${selectedMusicId()}/cover-art`, {
+                headers: { "Authorization": `Bearer ${token()}` }
+            });
+
             // Decode data as an image
-            const imageBuffer = await musicArtResponse.arrayBuffer();
+            const imageBuffer = await response.arrayBuffer();
             const blob = new Blob([imageBuffer])
             const url = window.URL.createObjectURL(blob);
 
             // Cache cover art file for later requests
-            await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: musicArtResponse.headers.get("Last-Modified")});
+            await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: response.headers.get("Last-Modified")});
 
             setCoverArtUrl(url);
         }

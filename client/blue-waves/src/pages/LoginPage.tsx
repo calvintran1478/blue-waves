@@ -1,11 +1,9 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { HTTPError } from "ky";
-import { api } from "../index.tsx";
 
 const LoginPage = () => {
-    const [email, setEmail] = createSignal("");
-    const [password, setPassword] = createSignal("");
+    let email = "";
+    let password = "";
 
     const [loginLoading, setLoginLoading] = createSignal(false);
     const [loginError, setLoginError] = createSignal("");
@@ -17,25 +15,23 @@ const LoginPage = () => {
         event.preventDefault();
 
         // Login user
-        setLoginError("");
         setLoginLoading(true);
-        try {
-            await api.post("users/login", {
-                json: {
-                    email: email(),
-                    password: password()
-                },
-                credentials: "include"
-            });
+        setLoginError("");
 
-            // Navigate to home page
-            navigate("/home");
-        } catch (error) {
-            const httpError = error as HTTPError;
-            setLoginLoading(false);
-            setLoginError(await httpError.response.text());
-        }
+        const response = await fetch("http://localhost:8080/api/v1/users/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            }),
+            credentials: "include"
+        });
 
+        if (response.ok) navigate("/home");
+
+        setLoginLoading(false);
+        setLoginError(await response.text());
     }
 
     return (
@@ -45,11 +41,11 @@ const LoginPage = () => {
                 <form onSubmit={loginUser} class="flex flex-col items-center">
                     <div class="flex flex-col m-4 text-xl">
                         <label for="email">Email</label>
-                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => setEmail(event.target.value)} required/>
+                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => {email = event.target.value; }} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="password">Password</label>
-                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => setPassword(event.target.value)} required/>
+                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => {password = event.target.value}} required/>
                     </div>
                     <button class="border-2 rounded px-10 py-2 mt-6 text-lg" disabled={loginLoading()}>Login</button>
                 </form>

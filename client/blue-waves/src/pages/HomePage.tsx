@@ -1,7 +1,6 @@
 import { A, useNavigate, createAsync } from "@solidjs/router";
 import DropDownMenu from "../components/DropDownMenu.tsx";
 import { getToken } from "../utils/token";
-import { api } from "../index.tsx";
 
 const HomePage = () => {
 
@@ -11,15 +10,13 @@ const HomePage = () => {
 
     const logout = async () => {
         // Logout user
-        await api.post("users/logout", {
-            headers: {
-                "Authorization": `Bearer ${token()}`
-            },
+        const response = await fetch("http://localhost:8080/api/v1/users/logout", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token()}` },
             credentials: "include"
         });
 
-        // Navigate to login page
-        navigate("/login");
+        if (response.ok) navigate("/login")
     }
 
     return (

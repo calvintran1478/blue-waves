@@ -1,10 +1,13 @@
 import { query, redirect } from "@solidjs/router";
-import { api } from "../index.tsx";
 
 export const getToken = query(async () => {
-    try {
-        return await api.get("users/token", { credentials: "include" }).text();
-    } catch (error) {
+    const response = await fetch("http://localhost:8080/api/v1/users/token", {
+        credentials: "include"
+    });
+
+    if (response.ok) {
+        return await response.text();
+    } else {
         throw redirect("/login");
     }
 }, "token");

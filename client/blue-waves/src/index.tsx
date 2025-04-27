@@ -1,7 +1,6 @@
 import { lazy } from "solid-js";
 import { render } from "solid-js/web";
 import { Router } from "@solidjs/router";
-import ky from "ky";
 import "./index.css"
 
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -32,10 +31,5 @@ const routes = [
         component: MusicPage
     }
 ]
-
-export const api = ky.create({
-    prefixUrl: "http://localhost:8080/api/v1",
-    retry: 0,
-});
 
 render(() => <Router>{routes}</Router>, document.getElementById("root")!);

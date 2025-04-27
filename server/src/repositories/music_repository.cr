@@ -83,7 +83,7 @@ class Repositories::MusicRepository < Repositories::Repository
 
     # Fetch music information
     initialized = false
-    context.response.output << "{\"music\":["
+    context.response.output << "["
     @db.query("SELECT music_id, title, artist FROM music WHERE user_id=$1 ORDER BY creation_time DESC LIMIT #{limit_value} OFFSET #{offset_value}", user_id) do |rs|
       rs.each do
         music_id, title, artist = rs.read(String, String, String)
@@ -99,7 +99,7 @@ class Repositories::MusicRepository < Repositories::Repository
         context.response.output << "}"
       end
     end
-    context.response.output << "]}"
+    context.response.output << "]"
   end
 
   # Retreives a single music file in the user's collection based on music id

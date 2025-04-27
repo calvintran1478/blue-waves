@@ -1,13 +1,11 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { HTTPError } from "ky";
-import { api } from "../index.tsx";
 
 const RegisterPage = () => {
-    const [email, setEmail] = createSignal("");
-    const [password, setPassword] = createSignal("");
-    const [firstName, setFirstName] = createSignal("");
-    const [lastName, setLastName] = createSignal("");
+    let email = "";
+    let password = "";
+    let firstName = "";
+    let lastName = "";
 
     const [registerLoading, setRegisterLoading] = createSignal(false);
     const [registerError, setRegisterError] = createSignal("");
@@ -19,25 +17,24 @@ const RegisterPage = () => {
         event.preventDefault();
 
         // Register user
-        setRegisterError("");
         setRegisterLoading(true);
-        try{
-            await api.post("users", {
-                json: {
-                    email: email(),
-                    password: password(),
-                    first_name: firstName(),
-                    last_name: lastName()
-                }
-            });
+        setRegisterError("");
 
-            // Navigate to login page
-            navigate("/login");
-        } catch (error) {
-            const httpError = error as HTTPError;
-            setRegisterLoading(false);
-            setRegisterError(await httpError.response.text());
-        }
+        const response = await fetch("http://localhost:8080/api/v1/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: email,
+                password: password,
+                first_name: firstName,
+                last_name: lastName
+            }),
+        });
+
+        if (response.ok) navigate("/login");
+
+        setRegisterLoading(false);
+        setRegisterError(await response.text());
     }
 
     return (
@@ -47,19 +44,19 @@ const RegisterPage = () => {
                 <form onSubmit={registerUser} class="flex flex-col items-center">
                     <div class="flex flex-col m-4 text-xl">
                         <label for="email">Email</label>
-                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => setEmail(event.target.value)} required/>
+                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => {email = event.target.value}} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="password">Password</label>
-                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => setPassword(event.target.value)} required/>
+                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => {password = event.target.value}} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="firstName">First Name</label>
-                        <input id="firstName" class="border-2 w-96 h-10" onChange={(event) => setFirstName(event.target.value)} required/>
+                        <input id="firstName" class="border-2 w-96 h-10" onChange={(event) => {firstName = event.target.value}} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="lastName">Last Name</label>
-                        <input id="lastName" class="border-2 w-96 h-10" onChange={(event) => setLastName(event.target.value)} required/>
+                        <input id="lastName" class="border-2 w-96 h-10" onChange={(event) => {lastName = event.target.value}} required/>
                     </div>
                     <button class="border-2 rounded p-2 mt-4 text-lg" disabled={registerLoading()}>Create Account</button>
                 </form>
