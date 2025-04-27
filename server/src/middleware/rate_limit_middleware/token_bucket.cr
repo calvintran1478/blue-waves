@@ -1,3 +1,4 @@
+require "../../utils/str"
 
 class Middleware::RateLimitMiddleware
   # A token bucket class used for rate limiting requests made to a particular endpoint.
@@ -16,9 +17,9 @@ class Middleware::RateLimitMiddleware
     #
     # Automatically refills and subtracts from the token bucket as needed upon
     # each successful call
-    def rate_limit_request(user_id : String) : Bool
+    def rate_limit_request(user_id : (String | Bytes)) : Bool
       # Identify user bucket for this endpoint
-      bucket_id = "#{@http_method}:#{@endpoint}:#{user_id}"
+      bucket_id = Utils::Str.combine_bytes(@http_method, ":", @endpoint, ":", user_id)
 
       # Get bucket details from the user
       tokens = @auth_db.hget(bucket_id, "tokens")

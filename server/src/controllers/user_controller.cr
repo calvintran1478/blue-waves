@@ -30,7 +30,7 @@ class Controllers::UserController < Controllers::Controller
     when {"POST", "/login".to_slice}
       # Perform rate limiting based on IP address
       remote_address = context.request.remote_address.to_s
-      ip_address = remote_address[...remote_address.rindex(":")]
+      ip_address = Bytes.new(remote_address.to_unsafe, remote_address.rindex(':').as(Int32))
       login_allowed = @rate_limit_middleware.rate_limit_request(ip_address, "POST", "/api/v1/users/login")
 
       # Let the request go through if the user is allowed
