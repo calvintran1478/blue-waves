@@ -11,6 +11,9 @@ require "../utils/str"
 class Controllers::MusicController < Controllers::Controller
   include Validators::MusicValidator
 
+  MUSIC_ID_LENGTH = 22
+  MUSIC_ID_STRING_LENGTH = 35 # MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
+
   def initialize(@music_repository : Repositories::MusicRepository, @auth_middleware : Middleware::AuthMiddleware, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users/music".size
   end
@@ -214,8 +217,14 @@ class Controllers::MusicController < Controllers::Controller
     end
 
     # Check if music file exists
-    music_file_exists = @music_repository.exists_by_id(user_id, String.new(music_id))
-    if !music_file_exists
+    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
+    music_file_exists = false
+    if music_id.size == MUSIC_ID_LENGTH
+      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+      music_file_exists = @music_repository.exists_by_id(user_id, music_id_str)
+    end
+
+    unless music_file_exists
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
       return
@@ -251,7 +260,13 @@ class Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Update music file
-    music_updated = @music_repository.update(user_id, String.new(music_id), data.title, data.artist)
+    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
+    music_updated = false
+    if music_id.size == MUSIC_ID_LENGTH
+      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+      music_updated = @music_repository.update(user_id, music_id_str, data.title, data.artist)
+    end
+
     unless music_updated
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -272,7 +287,13 @@ class Controllers::MusicController < Controllers::Controller
     return if user_id.nil?
 
     # Delete music file
-    file_removed = @music_repository.delete(user_id, String.new(music_id))
+    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
+    file_removed = false
+    if music_id.size == MUSIC_ID_LENGTH
+      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+      file_removed = @music_repository.delete(user_id, music_id_str)
+    end
+
     unless file_removed
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
