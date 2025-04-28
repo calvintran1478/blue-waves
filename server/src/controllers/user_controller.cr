@@ -14,8 +14,19 @@ require "../repositories/user_repository"
 class Controllers::UserController < Controllers::Controller
   include Validators::UserValidator
 
+  @ACCESS_TOKEN_LIFESPAN : Int32
+  @REFRESH_TOKEN_LIFESPAN : Int32
+  @BCRYPT_COST : Int32
+  @API_SECRET : String
+
   def initialize(@user_repository : Repositories::UserRepository, @auth_db : Redis::PooledClient, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users".size
+
+    # Constant environment variables stored for quick lookup
+    @ACCESS_TOKEN_LIFESPAN = ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i * 60
+    @REFRESH_TOKEN_LIFESPAN = ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i * 3600
+    @BCRYPT_COST = ENV["BCRYPT_COST"].to_i
+    @API_SECRET = ENV["API_SECRET"]
   end
 
   # Handles requests made to the /api/v1/users route by directing it to the correct handler
@@ -67,7 +78,7 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Hash password
-    hashed_password = Crypto::Bcrypt::Password.create data.password, ENV["BCRYPT_COST"].to_i
+    hashed_password = Crypto::Bcrypt::Password.create data.password, @BCRYPT_COST
 
     # Register user into the database
     @user_repository.create(data.email, hashed_password, data.first_name, data.last_name)
@@ -110,20 +121,20 @@ class Controllers::UserController < Controllers::Controller
 
     # Start token family
     token_family_id = UUID.v4().to_s
-    @auth_db.set(token_family_id, 1, ex: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i * 3600)
+    @auth_db.set(token_family_id, 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = {user_id: user_id, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
-    access_token = JWT.encode(access_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
+    access_claims = {user_id: user_id, exp: Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN}
+    access_token = JWT.encode(access_claims, @API_SECRET, JWT::Algorithm::HS256)
 
-    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
-    refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
+    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: 1, exp: Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN}
+    refresh_token = JWT.encode(refresh_claims, @API_SECRET, JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
       value: refresh_token,
-      max_age: Time::Span.new(hours: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i),
+      max_age: Time::Span.new(seconds: @REFRESH_TOKEN_LIFESPAN),
       http_only: true,
       secure: true,
       samesite: HTTP::Cookie::SameSite::Strict
@@ -143,7 +154,7 @@ class Controllers::UserController < Controllers::Controller
   def refresh_token(context : HTTP::Server::Context) : Nil
     # Parse claims if token is not expired
     begin
-      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, ENV["API_SECRET"], JWT::Algorithm::HS256)
+      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, @API_SECRET, JWT::Algorithm::HS256)
       user_id = payload["user_id"].as_s
       token_family_id = payload["token_family_id"].as_s
       sequence_number = payload["sequence_number"].as_i
@@ -174,20 +185,20 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Update sequence number to reflect new token in the token family
-    @auth_db.set(token_family_id, sequence_number + 1, ex: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i * 3600)
+    @auth_db.set(token_family_id, sequence_number + 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = {user_id: user_id, exp: Time.utc.to_unix + (60 * ENV["ACCESS_TOKEN_MINUTE_LIFESPAN"].to_i)}
-    access_token = JWT.encode(access_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
+    access_claims = {user_id: user_id, exp: Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN}
+    access_token = JWT.encode(access_claims, @API_SECRET, JWT::Algorithm::HS256)
 
-    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: sequence_number + 1, exp: Time.utc.to_unix + (3600 * ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i)}
-    refresh_token = JWT.encode(refresh_claims, ENV["API_SECRET"], JWT::Algorithm::HS256)
+    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: sequence_number + 1, exp: Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN}
+    refresh_token = JWT.encode(refresh_claims, @API_SECRET, JWT::Algorithm::HS256)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
       value: refresh_token,
-      max_age: Time::Span.new(hours: ENV["REFRESH_TOKEN_HOUR_LIFESPAN"].to_i),
+      max_age: Time::Span.new(seconds: @REFRESH_TOKEN_LIFESPAN),
       http_only: true,
       secure: true,
       samesite: HTTP::Cookie::SameSite::Strict
@@ -228,7 +239,7 @@ class Controllers::UserController < Controllers::Controller
 
     # Parse access token and get user id
     begin
-      payload, _ = JWT.decode(String.new(access_token), ENV["API_SECRET"], JWT::Algorithm::HS256)
+      payload, _ = JWT.decode(String.new(access_token), @API_SECRET, JWT::Algorithm::HS256)
     rescue
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -242,7 +253,7 @@ class Controllers::UserController < Controllers::Controller
 
     # Invalidate token family if refresh token is not expired
     begin
-      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, ENV["API_SECRET"], JWT::Algorithm::HS256)
+      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, @API_SECRET, JWT::Algorithm::HS256)
       @auth_db.del(payload["token_family_id"].as_s)
     rescue
     end
