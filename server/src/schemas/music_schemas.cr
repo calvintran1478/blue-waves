@@ -26,7 +26,7 @@ module Schemas::MusicSchemas
     def initialize(@music_id : String, @title : String, @artist : String)
     end
 
-    def to_json(io : IO) : Nil
+    def to_s(io : IO) : Nil
       io << "{"
       io << "\"music_id\":\"" << @music_id << "\","
       io << "\"title\":\"" << @title << "\","

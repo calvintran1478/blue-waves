@@ -113,12 +113,11 @@ class Controllers::MusicController < Controllers::Controller
     # Send success response
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::CREATED
-    response_body = AddMusicResponse.new(
+    context.response.output << AddMusicResponse.new(
       music_id: music_id,
       title: data.title,
       artist: data.artist,
     )
-    response_body.to_json(context.response.output)
   end
 
   # Retreives the title and artist for each music file in the user's collection
