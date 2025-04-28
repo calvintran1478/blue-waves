@@ -21,9 +21,8 @@ module Validators::UserValidator
   # ```
   def validate_register_request(context : HTTP::Server::Context) : (RegisterRequest | Nil)
     # Parse JSON body
-    begin
-      data = RegisterRequest.from_json(context.request.body.as(IO))
-    rescue
+    data = RegisterRequest.from_json(context.request.body.as(IO)) rescue nil
+    if data.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
@@ -86,9 +85,8 @@ module Validators::UserValidator
   # ```
   def validate_login_request(context : HTTP::Server::Context) : (LoginRequest | Nil)
     # Parse JSON body
-    begin
-      data = LoginRequest.from_json(context.request.body.as(IO))
-    rescue
+    data = LoginRequest.from_json(context.request.body.as(IO)) rescue nil
+    if data.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
