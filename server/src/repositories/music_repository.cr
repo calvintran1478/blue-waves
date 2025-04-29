@@ -12,6 +12,11 @@ require "../utils/str"
 class Repositories::MusicRepository < Repositories::Repository
   include Schemas::MusicSchemas
 
+  USER_ID_LENGTH = 36
+  MUSIC_ID_LENGTH = 22
+  MUSIC_FILE_ID_STRING_LENGTH = 72 # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
+  COVER_ART_ID_STRING_LENGTH = 82  # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 10 + 1 + String::HEADER_SIZE
+
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
     @music_uploader = Awscr::S3::FileUploader.new(@music_db)
   end
@@ -46,15 +51,29 @@ class Repositories::MusicRepository < Repositories::Repository
         music_id = Random::Secure.urlsafe_base64
         tx.connection.exec "INSERT INTO music (music_id, title, artist, user_id) VALUES ($1, $2, $3, $4)", music_id, title, artist, user_id
 
+        # Create object id for music file
+        object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
+        object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
+
         # Upload music file to storage bucket
         File.open(music_file.path, "r") do |file|
-          @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}", file)
+          @music_uploader.upload("blue-waves", object_id, file)
         end
 
         # Upload cover art file to storage bucket (if one was included)
         unless art_file.nil?
+          # Create object id for cover art file
+          cover_art_str = "/cover-art"
+          curr_buffer = (object_id_buffer.to_unsafe + object_id.size).as(String).to_unsafe
+          curr_buffer.copy_from(cover_art_str.to_unsafe, cover_art_str.size)
+          curr_buffer[cover_art_str.size] = 0_u8
+
+          bytesize = USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + cover_art_str.size
+          object_id = object_id_buffer.to_unsafe.as(String)
+          object_id.initialize_header(bytesize, bytesize)
+
           File.open(art_file.path, "r") do |file|
-            @music_uploader.upload("blue-waves", "#{user_id}/#{music_id}/cover-art", file)
+            @music_uploader.upload("blue-waves", object_id, file)
           end
         end
 
@@ -112,7 +131,8 @@ class Repositories::MusicRepository < Repositories::Repository
   def get(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context) : Nil
     begin
       # Get object id using the given parameters
-      object_id = Utils::Str.combine_bytes(user_id, "/", music_id)
+      object_id_buffer = uninitialized UInt8[MUSIC_FILE_ID_STRING_LENGTH]
+      object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
 
       # Check range header for requested bytes
       range_header = context.request.headers["Range"]?
@@ -151,7 +171,8 @@ class Repositories::MusicRepository < Repositories::Repository
   def get_cover_art(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context) : Nil
     begin
       # Get object id using the given parameters
-      object_id = Utils::Str.combine_bytes(user_id, "/", music_id, "/cover-art")
+      object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
+      object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
 
       # Check for conditional request
       modified_since = context.request.headers["If-Modified-Since"]?
@@ -189,7 +210,8 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : File) : Bool
     # Get object id using the given parameters
-    object_id = Utils::Str.combine_bytes(user_id, "/", music_id, "/cover-art")
+    object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
+    object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
 
     # Check if cover art is being set for the first time
     first_created = false
@@ -231,8 +253,22 @@ class Repositories::MusicRepository < Repositories::Repository
     # Delete music file and its cover art
     file_exists = (a.rows_affected != 0)
     if file_exists
-      @music_db.delete_object("blue-waves", "#{user_id}/#{music_id}")
-      @music_db.delete_object("blue-waves", "#{user_id}/#{music_id}/cover-art")
+      # Delete music file
+      object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
+      object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
+      @music_db.delete_object("blue-waves", object_id)
+
+      # Delete cover art
+      cover_art_str = "/cover-art"
+      curr_buffer = (object_id_buffer.to_unsafe + object_id.size).as(String).to_unsafe
+      curr_buffer.copy_from(cover_art_str.to_unsafe, cover_art_str.size)
+      curr_buffer[cover_art_str.size] = 0_u8
+
+      bytesize = USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + cover_art_str.size
+      object_id = object_id_buffer.to_unsafe.as(String)
+      object_id.initialize_header(bytesize, bytesize)
+
+      @music_db.delete_object("blue-waves", object_id)
     end
 
     return file_exists
