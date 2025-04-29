@@ -18,7 +18,6 @@ class Repositories::MusicRepository < Repositories::Repository
   COVER_ART_ID_STRING_LENGTH = 82  # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 10 + 1 + String::HEADER_SIZE
 
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
-    @music_uploader = Awscr::S3::FileUploader.new(@music_db)
   end
 
   # Returns whether a music file with the given id exists in the user's collection
@@ -44,7 +43,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.create("music_title", "artist", music_file, "user_id")
   # ```
-  def create(title : String, artist : String, music_file : File, art_file : File | Nil, user_id : String) : (String | Nil)
+  def create(title : String, artist : String, music_file : Bytes, art_file : Bytes | Nil, user_id : String) : (String | Nil)
     begin
       @db.transaction do |tx|
         # Store metadata about the music file
@@ -56,9 +55,7 @@ class Repositories::MusicRepository < Repositories::Repository
         object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
 
         # Upload music file to storage bucket
-        File.open(music_file.path, "r") do |file|
-          @music_uploader.upload("blue-waves", object_id, file)
-        end
+        @music_db.put_object("blue-waves", object_id, music_file)
 
         # Upload cover art file to storage bucket (if one was included)
         unless art_file.nil?
@@ -72,9 +69,7 @@ class Repositories::MusicRepository < Repositories::Repository
           object_id = object_id_buffer.to_unsafe.as(String)
           object_id.initialize_header(bytesize, bytesize)
 
-          File.open(art_file.path, "r") do |file|
-            @music_uploader.upload("blue-waves", object_id, file)
-          end
+          @music_db.put_object("blue-waves", object_id, art_file)
         end
 
         return music_id
@@ -208,7 +203,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
-  def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : File) : Bool
+  def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : Bytes) : Bool
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
@@ -222,9 +217,7 @@ class Repositories::MusicRepository < Repositories::Repository
     end
 
     # Set cover art
-    File.open(art_file.path, "r") do |file|
-      @music_uploader.upload("blue-waves", object_id, file)
-    end
+    @music_db.put_object("blue-waves", object_id, art_file)
 
     return first_created
   end

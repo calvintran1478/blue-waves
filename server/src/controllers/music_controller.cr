@@ -103,9 +103,9 @@ class Controllers::MusicController < Controllers::Controller
     # Add music to the user's collection
     music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, user_id)
 
-    # Delete temporary files
-    data.music_file.delete
-    data.art_file.as(File).delete unless data.art_file.nil?
+    # Free allocated memory
+    LibC.free(data.music_file.to_unsafe)
+    LibC.free(data.art_file.as(Bytes).to_unsafe) unless data.art_file.nil?
 
     # Return error response if there were issues adding the music file
     if music_id.nil?
@@ -236,6 +236,9 @@ class Controllers::MusicController < Controllers::Controller
 
     # Set cover art for the music file
     cover_art_created = @music_repository.set_cover_art(user_id, music_id, data.art_file)
+
+    # Free allocated memory
+    LibC.free(data.art_file.to_unsafe)
 
     # Send success response
     if cover_art_created

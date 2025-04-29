@@ -9,12 +9,26 @@ module Validators::MusicValidator
   MAX_MUSIC_FILE_SIZE = 25_000_000 # 25,000,000 bytes, or 25MB
   MAX_COVER_ART_FILE_SIZE = 8_000_000 # 8,000,000 bytes, or 8MB
 
+  private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
+    curr_buffer = Bytes.new(buffer, limit)
+    remaining = limit
+    bytes_read = io.read(curr_buffer[0, Math.min(curr_buffer.size, Math.max(remaining, 0))])
+
+    while bytes_read > 0
+      remaining -= bytes_read
+      curr_buffer += bytes_read
+      bytes_read = io.read(curr_buffer[0, Math.min(curr_buffer.size, Math.max(remaining, 0))])
+    end
+
+    limit - remaining
+  end
+
   def validate_add_music_request(context : HTTP::Server::Context) : (AddMusicRequest | Nil)
     # Parse form data
-    music_file = nil
-    art_file = nil
     title = nil
     artist = nil
+    music_file_buffer = nil
+    art_file_buffer = nil
     music_file_size = 0
     art_file_size = 0
 
@@ -24,18 +38,16 @@ module Validators::MusicValidator
         when "musicFile"
           music_file_name = part.filename.as(String)
           if music_file_name.ends_with?(".mp3") || music_file_name.ends_with?(".ogg")
-            music_file = File.tempfile("music_file") do |music_file|
-              music_file_size = IO.copy(part.body, music_file, MAX_MUSIC_FILE_SIZE + 1)
-            end
+            music_file_buffer = LibC.malloc((MAX_MUSIC_FILE_SIZE + 1) * sizeof(UInt8)).as(UInt8*)
+            music_file_size = read_io_to_buffer(part.body, music_file_buffer, MAX_MUSIC_FILE_SIZE + 1)
           else
             raise "Invalid music file"
           end
         when "artFile"
           art_file_name = part.filename.as(String)
           if art_file_name.ends_with?("jpg") || art_file_name.ends_with?("jpeg") || art_file_name.ends_with?("png")
-            art_file = File.tempfile("art_file") do |art_file|
-              art_file_size = IO.copy(part.body, art_file, MAX_COVER_ART_FILE_SIZE + 1)
-            end
+            art_file_buffer = LibC.malloc((MAX_COVER_ART_FILE_SIZE + 1) * sizeof(UInt8)).as(UInt8*)
+            art_file_size = read_io_to_buffer(part.body, art_file_buffer, MAX_COVER_ART_FILE_SIZE + 1)
           else
             raise "Invalid cover art file"
           end
@@ -46,33 +58,33 @@ module Validators::MusicValidator
         end
       end
     rescue
-      music_file.delete if music_file.is_a?(File)
-      art_file.delete if art_file.is_a?(File)
+      LibC.free(music_file_buffer) unless music_file_buffer.nil?
+      LibC.free(art_file_buffer) unless art_file_buffer.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Malformed request"
       return
     end
 
     # Check that the music file is included and does not exceed size limits
-    if music_file.nil?
-      art_file.delete if art_file.is_a?(File)
+    if music_file_buffer.nil?
+      LibC.free(art_file_buffer) unless art_file_buffer.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "No music file found"
       return
     end
 
     if music_file_size > MAX_MUSIC_FILE_SIZE
-      music_file.delete
-      art_file.delete if art_file.is_a?(File)
+      LibC.free(music_file_buffer)
+      LibC.free(art_file_buffer) unless art_file_buffer.nil?
       context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
       context.response.output << "Music file size exceeds allowed limits"
       return
     end
 
     # Check that the cover art file (if included) does not exceed size limits
-    if !art_file.nil? && art_file_size > MAX_COVER_ART_FILE_SIZE
-      music_file.delete
-      art_file.delete
+    if !art_file_buffer.nil? && art_file_size > MAX_COVER_ART_FILE_SIZE
+      LibC.free(music_file_buffer)
+      LibC.free(art_file_buffer)
       context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
       context.response.output << "Cover art file size exceeds allowed limits"
       return
@@ -80,16 +92,16 @@ module Validators::MusicValidator
 
     # Check that the title and artist fields exist and are not blank
     if title.nil? || title.blank?
-      music_file.delete
-      art_file.delete if art_file.is_a?(File)
+      LibC.free(music_file_buffer)
+      LibC.free(art_file_buffer) unless art_file_buffer.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Title cannot be blank"
       return
     end
 
     if artist.nil? || artist.blank?
-      music_file.delete
-      art_file.delete if art_file.is_a?(File)
+      LibC.free(music_file_buffer)
+      LibC.free(art_file_buffer) unless art_file_buffer.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Artist cannot be blank"
       return
@@ -98,8 +110,8 @@ module Validators::MusicValidator
     # Check that the given title name is valid
     title.each_char do |ch|
       if ch == '/' || ch == '.'
-        music_file.delete
-        art_file.delete if art_file.is_a?(File)
+        LibC.free(music_file_buffer)
+        LibC.free(art_file_buffer) unless art_file_buffer.nil?
         context.response.status = HTTP::Status::BAD_REQUEST
         context.response.output << "Invalid title"
         return
@@ -107,12 +119,14 @@ module Validators::MusicValidator
     end
 
     # Return validated data
+    music_file = Bytes.new(music_file_buffer, music_file_size)
+    art_file = art_file_buffer.nil? ? nil : Bytes.new(art_file_buffer, art_file_size)
     return AddMusicRequest.new(title, artist, music_file, art_file)
   end
 
   def validate_set_cover_art_request(context : HTTP::Server::Context) : (SetCoverArtRequest | Nil)
     # Parse form data
-    art_file = nil
+    art_file_buffer = nil
     art_file_size = 0
 
     begin
@@ -121,9 +135,8 @@ module Validators::MusicValidator
         when "artFile"
           art_file_name = part.filename.as(String)
           if art_file_name.ends_with?("jpg") || art_file_name.ends_with?("jpeg") || art_file_name.ends_with?("png")
-            art_file = File.tempfile("art_file") do |art_file|
-              art_file_size = IO.copy(part.body, art_file, MAX_COVER_ART_FILE_SIZE + 1)
-            end
+            art_file_buffer = LibC.malloc((MAX_COVER_ART_FILE_SIZE + 1) * sizeof(UInt8)).as(UInt8*)
+            art_file_size = read_io_to_buffer(part.body, art_file_buffer, MAX_COVER_ART_FILE_SIZE + 1)
           else
             raise "Invalid cover art file"
           end
@@ -136,21 +149,21 @@ module Validators::MusicValidator
     end
 
     # Check that the cover art file exists and does not exceed size limits
-    if art_file.nil?
+    if art_file_buffer.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "No cover art file found"
       return
     end
 
     if art_file_size > MAX_COVER_ART_FILE_SIZE
-      art_file.delete
+      LibC.free(art_file_buffer)
       context.response.status = HTTP::Status::PAYLOAD_TOO_LARGE
       context.response.output << "Cover art file size exceeds allowed limits"
       return
     end
 
     # Return validated data
-    return SetCoverArtRequest.new(art_file)
+    return SetCoverArtRequest.new(Bytes.new(art_file_buffer, art_file_size))
   end
 
   def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)

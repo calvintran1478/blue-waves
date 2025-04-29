@@ -11,10 +11,10 @@ module Schemas::MusicSchemas
 
     getter title : String
     getter artist : String
-    getter music_file : File
-    getter art_file : File | Nil
+    getter music_file : Bytes
+    getter art_file : Bytes | Nil
 
-    def initialize(@title : String, @artist : String, @music_file : File, @art_file : File | Nil)
+    def initialize(@title : String, @artist : String, @music_file : Bytes, @art_file : Bytes | Nil)
     end
   end
 
@@ -41,9 +41,9 @@ module Schemas::MusicSchemas
   # form data.
   struct SetCoverArtRequest
 
-    getter art_file : File
+    getter art_file : Bytes
 
-    def initialize(@art_file : File)
+    def initialize(@art_file : Bytes)
     end
   end
 
