@@ -104,8 +104,7 @@ class Controllers::MusicController < Controllers::Controller
     music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, user_id)
 
     # Free allocated memory
-    LibC.free(data.music_file.to_unsafe)
-    LibC.free(data.art_file.as(Bytes).to_unsafe) unless data.art_file.nil?
+    LibC.free(data.file_buffer)
 
     # Return error response if there were issues adding the music file
     if music_id.nil?

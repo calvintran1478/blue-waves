@@ -13,8 +13,9 @@ module Schemas::MusicSchemas
     getter artist : String
     getter music_file : Bytes
     getter art_file : Bytes | Nil
+    getter file_buffer : UInt8*
 
-    def initialize(@title : String, @artist : String, @music_file : Bytes, @art_file : Bytes | Nil)
+    def initialize(@title : String, @artist : String, @music_file : Bytes, @art_file : Bytes | Nil, @file_buffer : UInt8*)
     end
   end
 
