@@ -1,14 +1,19 @@
-import { A, useNavigate, createAsync } from "@solidjs/router";
+import { useContext, Signal } from "solid-js"; 
+import { A, useNavigate } from "@solidjs/router";
 import DropDownMenu from "../components/DropDownMenu.tsx";
 import { getToken } from "../utils/token";
+import { AuthContext } from "../index.tsx"; 
 
 const HomePage = () => {
 
-    const token = createAsync(() => getToken());
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const navigate = useNavigate();
 
     const logout = async () => {
+        // Fetch new token if user refreshed the page
+        if (token() === "") setToken(await getToken());
+
         // Logout user
         const response = await fetch("http://localhost:8080/api/v1/users/logout", {
             method: "POST",
@@ -16,7 +21,13 @@ const HomePage = () => {
             credentials: "include"
         });
 
-        if (response.ok) navigate("/login")
+        if (response.ok) {
+            setToken("");
+            navigate("/login");
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await logout();
+        }
     }
 
     return (

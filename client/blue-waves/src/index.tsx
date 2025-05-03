@@ -1,6 +1,6 @@
-import { lazy } from "solid-js";
+import { lazy, createContext, createSignal } from "solid-js";
 import { render } from "solid-js/web";
-import { Router } from "@solidjs/router";
+import { Router, Route } from "@solidjs/router";
 import "./index.css"
 
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -9,27 +9,27 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
 const MusicPage = lazy(() => import("./pages/MusicPage"));
 
-const routes = [
-    {
-        path: "/register",
-        component: RegisterPage,
-    },
-    {
-        path: "/login",
-        component: LoginPage
-    },
-    {
-        path: "/home",
-        component: HomePage
-    },
-    {
-        path: "/library",
-        component: LibraryPage
-    },
-    {
-        path: "/library/:music_id",
-        component: MusicPage
-    }
-]
+export const AuthContext = createContext();
 
-render(() => <Router>{routes}</Router>, document.getElementById("root")!);
+function AuthProvider(props: any) {
+    const [token, setToken] = createSignal("")
+
+    return (
+        <AuthContext.Provider value={[token, setToken]}>
+            {props.children}
+        </AuthContext.Provider>
+    )
+}
+
+render(
+    () => (
+        <Router root={(props) => <AuthProvider>{props.children}</AuthProvider>}>
+            <Route path="/register" component={RegisterPage}/>
+            <Route path="/login" component={LoginPage}/>
+            <Route path="/home" component={HomePage}/>
+            <Route path="/library" component={LibraryPage}/>
+            <Route path="/library/:music_id" component={MusicPage}/>
+        </Router>  
+    ),
+    document.getElementById("root")!
+);

@@ -1,4 +1,6 @@
-import { createSignal, Resource, Setter, Show } from "solid-js";
+import { createSignal, useContext, Resource, Signal, Setter, Show } from "solid-js";
+import { AuthContext } from "../index.tsx"; 
+import { getToken } from "../utils/token";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Expected fields for each music entry
@@ -8,11 +10,13 @@ interface MusicEntry {
     artist: string
 }
 
-const AddMusicModal = (props: { token: string, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
+const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
     let title = "";
     let artist = "";
 
     const [addMusicLoading, setAddMusicLoading] = createSignal(false);
+
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     let musicInput!: HTMLInputElement;
     let artInput!: HTMLInputElement;
@@ -33,7 +37,7 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
         setAddMusicLoading(true);
         const response = await fetch("http://localhost:8080/api/v1/users/music", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${props.token}` },
+            headers: { "Authorization": `Bearer ${token()}` },
             body: formData
         });
 
@@ -45,6 +49,9 @@ const AddMusicModal = (props: { token: string, closeCallback: () => void, musicE
 
             // Close modal
             props.closeCallback();
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await addMusic(event);
         }
         setAddMusicLoading(false);
     }

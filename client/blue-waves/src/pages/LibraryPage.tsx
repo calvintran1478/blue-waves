@@ -1,7 +1,8 @@
-import { createSignal, createResource, For, Show, Suspense } from "solid-js";
-import { createAsync, A } from "@solidjs/router";
+import { createSignal, createResource, useContext, For, Show, Suspense, Signal } from "solid-js";
+import { A } from "@solidjs/router";
 import { openDB } from "idb";
 import { getToken } from "../utils/token";
+import { AuthContext } from "../index.tsx";
 import AddMusicModal from "../components/AddMusicModal.tsx";
 import UpdateMusicModal from "../components/UpdateMusicModal.tsx";
 
@@ -13,9 +14,12 @@ const LibraryPage = () => {
 
     const [fetchCoverArtLoading, setFetchCoverArtLoading] = createSignal(false);
 
-    const token = createAsync(() => getToken());
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
-    const [musicEntries, modifyMusicEntries] = createResource(token, async () => {
+    const fetchMusicEntries = async () => {
+        // Fetch new token if user refreshed the page
+        if (token() === "") setToken(await getToken());
+
         // Get music entries
         const response = await fetch("http://localhost:8080/api/v1/users/music", {
             headers: { "Authorization": `Bearer ${token()}` }
@@ -23,10 +27,18 @@ const LibraryPage = () => {
 
         if (response.ok) {
             return await response.json();
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            return await fetchMusicEntries();
         }
-    });
+    };
+
+    const [musicEntries, modifyMusicEntries] = createResource(fetchMusicEntries);
 
     const fetchCoverArt = async () => {
+        // Fetch new token if user refreshed the page
+        if (token() === "") setToken(await getToken());
+
         setFetchCoverArtLoading(true);
         // Open music database
         const db = await openDB("musicFileDB", 1, {
@@ -60,23 +72,31 @@ const LibraryPage = () => {
                 const blob = new Blob([coverArtFileEntry["image_buffer"]]);
                 const url = window.URL.createObjectURL(blob);
                 setCoverArtUrl(url);
+            } else if (response.status === 401) {
+                setToken(await getToken());
+                await fetchCoverArt();
             }
-           
+
         } else {
             // If no cached value exists perform a normal request for the cover art file
             const response = await fetch(`http://localhost:8080/api/v1/users/music/${selectedMusicId()}/cover-art`, {
                 headers: { "Authorization": `Bearer ${token()}` }
             });
 
-            // Decode data as an image
-            const imageBuffer = await response.arrayBuffer();
-            const blob = new Blob([imageBuffer])
-            const url = window.URL.createObjectURL(blob);
+            if (response.ok) {
+                // Decode data as an image
+                const imageBuffer = await response.arrayBuffer();
+                const blob = new Blob([imageBuffer])
+                const url = window.URL.createObjectURL(blob);
 
-            // Cache cover art file for later requests
-            await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: response.headers.get("Last-Modified")});
+                // Cache cover art file for later requests
+                await db.put("coverArtFiles", {music_id: selectedMusicId(), image_buffer: imageBuffer, last_modified: response.headers.get("Last-Modified")});
 
-            setCoverArtUrl(url);
+                setCoverArtUrl(url);
+            } else if (response.status === 401) {
+                setToken(await getToken());
+                await fetchCoverArt();
+            }
         }
         setFetchCoverArtLoading(false);
     }
@@ -112,12 +132,12 @@ const LibraryPage = () => {
             </div>
             <Show when={showUpdateMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <UpdateMusicModal token={token() as string} musicId={selectedMusicId} setMusicId={setSelectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate} coverArtUrl={coverArtUrl} fetchCoverArtLoading={fetchCoverArtLoading}/>
+                    <UpdateMusicModal musicId={selectedMusicId} setMusicId={setSelectedMusicId} closeCallback={() => setShowUpdateMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate} coverArtUrl={coverArtUrl} fetchCoverArtLoading={fetchCoverArtLoading}/>
                 </div>
             </Show>
             <Show when={showAddMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <AddMusicModal token={token() as string} closeCallback={() => setShowAddMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate}/>
+                    <AddMusicModal closeCallback={() => setShowAddMusicModal(false)} musicEntries={musicEntries} setMusicEntries={modifyMusicEntries.mutate}/>
                 </div>
             </Show>
         </div>

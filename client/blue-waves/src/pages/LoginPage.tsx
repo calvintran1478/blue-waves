@@ -1,5 +1,6 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, useContext, Show, Signal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { AuthContext } from "../index.tsx"; 
 
 const LoginPage = () => {
     let email = "";
@@ -9,6 +10,8 @@ const LoginPage = () => {
     const [loginError, setLoginError] = createSignal("");
 
     const navigate = useNavigate();
+
+    const [_, setToken] = useContext(AuthContext) as Signal<string>;
 
     const loginUser = async (event: Event) => {
         // Prevent refresh
@@ -28,10 +31,13 @@ const LoginPage = () => {
             credentials: "include"
         });
 
-        if (response.ok) navigate("/home");
-
-        setLoginLoading(false);
-        setLoginError(await response.text());
+        if (response.ok) {
+            setToken(await response.text());
+            navigate("/home");
+        } else {
+            setLoginLoading(false);
+            setLoginError(await response.text());
+        }
     }
 
     return (

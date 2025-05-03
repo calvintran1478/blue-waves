@@ -1,6 +1,8 @@
-import { createSignal, createResource, Switch, Match, Accessor, Resource, Setter, Show } from "solid-js";
+import { createSignal, createResource, useContext, Switch, Match, Accessor, Resource, Signal, Setter, Show } from "solid-js";
 import { until } from "@solid-primitives/promise"; 
 import { openDB } from "idb";
+import { getToken } from "../utils/token";
+import { AuthContext } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Expected fields for each music entry
@@ -10,7 +12,7 @@ interface MusicEntry {
     artist: string
 }
 
-const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtLoading: Accessor<boolean>}) => {
+const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtLoading: Accessor<boolean>}) => {
     const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId())!
     const [setCoverArtLoading, setSetCoverArtLoading] = createSignal(false);
     const [deleteMusicLoading, setDeleteMusicLoading] = createSignal(false);
@@ -18,6 +20,8 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
     let title = musicEntry["title"];
     let artist = musicEntry["artist"];
     let artInput!: HTMLInputElement;
+
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const [coverArtFile] = createResource(async () => {
         await until(() => !props.fetchCoverArtLoading());
@@ -30,7 +34,7 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${props.token}`
+                "Authorization": `Bearer ${token()}`
             },
             body: JSON.stringify({
                 title: title,
@@ -44,6 +48,9 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
             const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
             newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title, "artist": artist};
             props.setMusicEntries(newMusicEntries);
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await updateMusic();
         }
     }
 
@@ -53,7 +60,7 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
 
         const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
             method: "DELETE",
-            headers: { "Authorization": `Bearer ${props.token}` },
+            headers: { "Authorization": `Bearer ${token()}` },
         });
 
         if (response.ok) {
@@ -75,6 +82,9 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
 
             // Close modal
             props.closeCallback();
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await deleteMusic(event);
         }
 
         setDeleteMusicLoading(false);
@@ -89,13 +99,16 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
         setSetCoverArtLoading(true);
         const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}/cover-art`, {
             method: "PUT",
-            headers: { "Authorization": `Bearer ${props.token}` },
+            headers: { "Authorization": `Bearer ${token()}` },
             body: data
         })
 
         if (response.ok) {
             // Invalidate cover art cache
             props.setMusicId("");
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await setCoverArt();
         }
         setSetCoverArtLoading(false);
     }
