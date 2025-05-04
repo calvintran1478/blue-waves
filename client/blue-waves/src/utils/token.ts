@@ -1,6 +1,6 @@
-import { query, redirect } from "@solidjs/router";
+import { redirect } from "@solidjs/router";
 
-export const getToken = query(async () => {
+export const getToken = async () => {
     const response = await fetch("http://localhost:8080/api/v1/users/token", {
         credentials: "include"
     });
@@ -10,4 +10,4 @@ export const getToken = query(async () => {
     } else {
         throw redirect("/login");
     }
-}, "token");
+};
