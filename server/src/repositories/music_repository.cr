@@ -17,6 +17,8 @@ class Repositories::MusicRepository < Repositories::Repository
   MUSIC_FILE_ID_STRING_LENGTH = 72 # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
   COVER_ART_ID_STRING_LENGTH = 82  # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 10 + 1 + String::HEADER_SIZE
 
+  DEFAULT_S3_HEADER = Hash(String, String).new
+
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
   end
 
@@ -55,7 +57,7 @@ class Repositories::MusicRepository < Repositories::Repository
         object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
 
         # Upload music file to storage bucket
-        @music_db.put_object("blue-waves", object_id, music_file)
+        @music_db.put_object("blue-waves", object_id, music_file, DEFAULT_S3_HEADER)
 
         # Upload cover art file to storage bucket (if one was included)
         unless art_file.nil?
@@ -69,7 +71,7 @@ class Repositories::MusicRepository < Repositories::Repository
           object_id = object_id_buffer.to_unsafe.as(String)
           object_id.initialize_header(bytesize, bytesize)
 
-          @music_db.put_object("blue-waves", object_id, art_file)
+          @music_db.put_object("blue-waves", object_id, art_file, DEFAULT_S3_HEADER)
         end
 
         return music_id
@@ -145,7 +147,7 @@ class Repositories::MusicRepository < Repositories::Repository
         end
       else
         # Fetch complete music file from storage bucket
-        @music_db.get_object("blue-waves", object_id) do |music_file|
+        @music_db.get_object("blue-waves", object_id, DEFAULT_S3_HEADER) do |music_file|
           context.response.content_type = "audio/mpeg"
           context.response.headers["Cache-Control"] = "private"
           context.response.status = HTTP::Status::OK
@@ -172,7 +174,7 @@ class Repositories::MusicRepository < Repositories::Repository
       # Check for conditional request
       modified_since = context.request.headers["If-Modified-Since"]?
       if !modified_since.nil?
-        headers = @music_db.head_object("blue-waves", object_id)
+        headers = @music_db.head_object("blue-waves", object_id, DEFAULT_S3_HEADER)
         threshold_time = HTTP.parse_time(modified_since)
 
         if !threshold_time.nil? && headers.last_modified <= threshold_time
@@ -184,7 +186,7 @@ class Repositories::MusicRepository < Repositories::Repository
       end
 
       # Fetch music cover art from storage bucket
-      @music_db.get_object("blue-waves", object_id) do |art_file|
+      @music_db.get_object("blue-waves", object_id, DEFAULT_S3_HEADER) do |art_file|
         context.response.content_type = "image/jpeg"
         context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
         context.response.headers["Cache-Control"] = "private, no-cache"
@@ -211,13 +213,13 @@ class Repositories::MusicRepository < Repositories::Repository
     # Check if cover art is being set for the first time
     first_created = false
     begin
-      @music_db.head_object("blue-waves", object_id)
+      @music_db.head_object("blue-waves", object_id, DEFAULT_S3_HEADER)
     rescue
       first_created = true
     end
 
     # Set cover art
-    @music_db.put_object("blue-waves", object_id, art_file)
+    @music_db.put_object("blue-waves", object_id, art_file, DEFAULT_S3_HEADER)
 
     return first_created
   end
@@ -249,7 +251,7 @@ class Repositories::MusicRepository < Repositories::Repository
       # Delete music file
       object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
       object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
-      @music_db.delete_object("blue-waves", object_id)
+      @music_db.delete_object("blue-waves", object_id, DEFAULT_S3_HEADER)
 
       # Delete cover art
       cover_art_str = "/cover-art"
@@ -261,7 +263,7 @@ class Repositories::MusicRepository < Repositories::Repository
       object_id = object_id_buffer.to_unsafe.as(String)
       object_id.initialize_header(bytesize, bytesize)
 
-      @music_db.delete_object("blue-waves", object_id)
+      @music_db.delete_object("blue-waves", object_id, DEFAULT_S3_HEADER)
     end
 
     return file_exists
