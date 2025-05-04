@@ -233,10 +233,29 @@ module Validators::MusicValidator
       return
     end
 
-    # Check the given title is non-blank
+    # Check the given title is non-blank and is within size limits
     if data.title.blank?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Title cannot be blank"
+      return
+    end
+
+    if data.title.size > MAX_TITLE_LENGTH
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Title cannot exceed 150 characters"
+      return
+    end
+
+    # Check the given artist is non-blank and is within size limits
+    if data.artist.blank?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Artist cannot be blank"
+      return
+    end
+
+    if data.artist.size > MAX_ARTIST_LENGTH
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Artist cannot exceed 100 characters"
       return
     end
 

@@ -138,11 +138,11 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
                 <form onSubmit={handleUpdate} class="flex flex-col justify-center items-center">
                     <div class="flex items-center m-4">
                         <label for="title" class="text-lg m-2">Title</label>
-                        <input id="title" class="border-2 m-2 w-60 h-8" value={title} onChange={(event) => {title = event.target.value}}/>
+                        <input id="title" class="border-2 m-2 w-60 h-8" value={title} onChange={(event) => {title = event.target.value}} maxlength={150}/>
                     </div>
                     <div class="flex items-center m-4">
                         <label for="artist" class="text-lg m-2">Artist</label>
-                        <input id="artist" class="border-2 m-2 w-60 h-8" value={artist} onChange={(event) => {artist = event.target.value}}/>
+                        <input id="artist" class="border-2 m-2 w-60 h-8" value={artist} onChange={(event) => {artist = event.target.value}} maxlength={100}/>
                     </div>
                     <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
                     <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={setCoverArtLoading()}>
