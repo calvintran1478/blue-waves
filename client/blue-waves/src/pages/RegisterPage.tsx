@@ -23,12 +23,7 @@ const RegisterPage = () => {
         const response = await fetch("http://localhost:8080/api/v1/users", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                email: email,
-                password: password,
-                first_name: firstName,
-                last_name: lastName
-            }),
+            body: `{"email":"${email}","password":"${password}","first_name":"${firstName}","last_name":"${lastName}"}`
         });
 
         if (response.ok) navigate("/login");
