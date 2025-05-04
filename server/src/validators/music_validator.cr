@@ -172,35 +172,30 @@ module Validators::MusicValidator
   end
 
   def validate_set_cover_art_request(context : HTTP::Server::Context) : (SetCoverArtRequest | Nil)
-    # Parse form data
-    art_file_buffer = nil
-    art_file_size = 0
-
-    begin
-      HTTP::FormData.parse(context.request) do |part|
-        case part.name
-        when "artFile"
-          art_file_name = part.filename.as(String)
-          if art_file_name.ends_with?("jpg") || art_file_name.ends_with?("jpeg") || art_file_name.ends_with?("png")
-            content_length = context.request.content_length
-            byte_limit = Math.min(content_length.nil? ? UInt64::MAX : content_length, MAX_COVER_ART_FILE_SIZE + 1)
-            art_file_buffer = LibC.malloc(byte_limit * sizeof(UInt8)).as(UInt8*)
-            art_file_size = read_io_to_buffer(part.body, art_file_buffer, byte_limit.to_i64)
-          else
-            raise "Invalid cover art file"
-          end
-        end
-      end
-    rescue
+    # Check for image header
+    content_type = context.request.headers["Content-Type"]?
+    if content_type != "image/jpeg" && content_type != "image/png"
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "Malformed request"
+      context.response.output << "File must be a JPEG or PNG"
       return
     end
 
-    # Check that the cover art file exists and does not exceed size limits
-    if art_file_buffer.nil?
+    # Read request body
+    if context.request.body.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "No cover art file found"
+      return
+    end
+
+    content_length = context.request.content_length
+    byte_limit = Math.min(content_length.nil? ? UInt64::MAX : content_length, MAX_COVER_ART_FILE_SIZE + 1)
+    art_file_buffer = LibC.malloc(byte_limit * sizeof(UInt8)).as(UInt8*)
+    art_file_size = read_io_to_buffer(context.request.body.as(IO), art_file_buffer, byte_limit.to_i64)
+
+    # Check that the cover art file is non-empty and satisfies size limits
+    if art_file_size == 0
+      LibC.free(art_file_buffer)
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Cover art file cannot be empty"
       return
     end
 

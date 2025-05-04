@@ -91,16 +91,12 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
     }
 
     const setCoverArt = async () => {
-        // Create form data
-        const data = new FormData();
-        data.append("artFile", artInput.files![0]);
-
         // Set cover art
         setSetCoverArtLoading(true);
         const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}/cover-art`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${token()}` },
-            body: data
+            body: artInput.files![0]
         })
 
         if (response.ok) {
