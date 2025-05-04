@@ -20,29 +20,39 @@ module Validators::UserValidator
   # end
   # ```
   def validate_register_request(context : HTTP::Server::Context) : (RegisterRequest | Nil)
-    # Parse JSON body
-    data = RegisterRequest.from_json(context.request.body.as(IO)) rescue nil
-    if data.nil?
+    # Parse request body
+    if context.request.body.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+
+    request_body = context.request.body.as(IO)
+    email = request_body.gets
+    password = request_body.gets
+    first_name = request_body.gets
+    last_name = request_body.gets
+
+    if email.nil? || password.nil? || first_name.nil? || last_name.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
 
     # Check email is valid
-    if !(Valid.email? data.email)
+    if !Valid.email?(email)
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Invalid email"
       return
     end
 
     # Check that the entered first and last names are non-empty
-    if data.first_name.empty?  || data.last_name.empty?
+    if first_name.empty? || last_name.empty?
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "First and last names cannot be empty"
       return
     end
 
     # Check that the entered first and last names consist of alphabetical characters
-    data.first_name.each_char do |ch|
+    first_name.each_char do |ch|
       if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
         context.response.output << "First and last names must consist of alphabetical characters"
@@ -50,7 +60,7 @@ module Validators::UserValidator
       end
     end
 
-    data.last_name.each_char do |ch|
+    last_name.each_char do |ch|
       if !ch.ascii_letter?
         context.response.status = HTTP::Status::BAD_REQUEST
         context.response.output << "First and last names must consist of alphabetical characters"
@@ -59,20 +69,19 @@ module Validators::UserValidator
     end
 
     # Check password meets length requirements
-    if data.password.size < 8
+    if password.size < 8
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Password must be at least 8 characters"
       return
     end
 
-    if data.password.size > 71
+    if password.size > 71
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Password cannot exceed 71 characters"
       return
     end
 
-    # Return validated data
-    return data
+    RegisterRequest.new(email, password, first_name, last_name)
   end
 
   # Validates POST requests sent to api/v1/users/login when logging into an account.
@@ -90,14 +99,21 @@ module Validators::UserValidator
   # end
   # ```
   def validate_login_request(context : HTTP::Server::Context) : (LoginRequest | Nil)
-    # Parse JSON body
-    data = LoginRequest.from_json(context.request.body.as(IO)) rescue nil
-    if data.nil?
+    # Parse request body
+    if context.request.body.nil?
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
 
-    # Return validated data
-    return data
+    request_body = context.request.body.as(IO)
+    email = request_body.gets
+    password = request_body.gets
+
+    if email.nil? || password.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+
+    LoginRequest.new(email, password)
   end
 end

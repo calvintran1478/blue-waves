@@ -23,8 +23,8 @@ const LoginPage = () => {
 
         const response = await fetch("http://localhost:8080/api/v1/users/login", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: `{"email":"${email}","password":"${password}"}`,
+            headers: { "Content-Type": "text/plain" },
+            body: `${email}\n${password}`,
             credentials: "include"
         });
 

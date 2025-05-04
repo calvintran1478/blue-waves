@@ -22,8 +22,8 @@ const RegisterPage = () => {
 
         const response = await fetch("http://localhost:8080/api/v1/users", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: `{"email":"${email}","password":"${password}","first_name":"${firstName}","last_name":"${lastName}"}`
+            headers: { "Content-Type": "text/plain" },
+            body: `${email}\n${password}\n${firstName}\n${lastName}`
         });
 
         if (response.ok) navigate("/login");
