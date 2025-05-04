@@ -167,16 +167,6 @@ module Validators::MusicValidator
       return
     end
 
-    # Check that the given title name is valid
-    title.each_char do |ch|
-      if ch == '/' || ch == '.'
-        LibC.free(file_buffer)
-        context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << "Invalid title"
-        return
-      end
-    end
-
     # Return validated data
     return AddMusicRequest.new(title, artist, music_file, art_file, file_buffer)
   end
