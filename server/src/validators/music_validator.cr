@@ -9,6 +9,12 @@ module Validators::MusicValidator
   MAX_MUSIC_FILE_SIZE = 25_000_000 # 25,000,000 bytes, or 25MB
   MAX_COVER_ART_FILE_SIZE = 8_000_000 # 8,000,000 bytes, or 8MB
 
+  MAX_TITLE_LENGTH = 150
+  MAX_ARTIST_LENGTH = 100
+
+  MAX_TITLE_STRING_LENGTH = 163 # MAX_TITLE_LENGTH + 1 + String::HEADER_SIZE
+  MAX_ARTIST_STRING_LENGTH = 113 # MAX_ARTIST_LENGTH + 1 + String::HEADER_SIZE
+
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
     curr_buffer = Bytes.new(buffer, limit)
     remaining = limit
@@ -23,7 +29,7 @@ module Validators::MusicValidator
     limit - remaining
   end
 
-  def validate_add_music_request(context : HTTP::Server::Context) : (AddMusicRequest | Nil)
+  def validate_add_music_request(context : HTTP::Server::Context, add_music_request_buffer : UInt8*) : (AddMusicRequest | Nil)
     # Initialize variables
     title = nil
     artist = nil
@@ -78,9 +84,35 @@ module Validators::MusicValidator
             raise "Invalid cover art file"
           end
         when "artist"
-          artist = part.body.gets_to_end
+          # Read artist bytes
+          artist_buffer = (add_music_request_buffer + MAX_TITLE_STRING_LENGTH).as(String).to_unsafe
+          artist_bytesize = read_io_to_buffer(part.body, artist_buffer, MAX_ARTIST_LENGTH + 1).to_i32
+          if artist_bytesize > MAX_ARTIST_LENGTH
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Artist cannot exceed 100 characters"
+            return
+          end
+          artist_buffer[artist_bytesize] = 0_u8
+
+          # Initialize artist string header
+          artist = (add_music_request_buffer + MAX_TITLE_STRING_LENGTH).as(String)
+          artist.initialize_header(artist_bytesize, artist_bytesize)
         when "title"
-          title = part.body.gets_to_end
+          # Read title bytes
+          title_buffer = add_music_request_buffer.as(String).to_unsafe
+          title_bytesize = read_io_to_buffer(part.body, title_buffer, MAX_TITLE_LENGTH + 1).to_i32
+          if title_bytesize > MAX_TITLE_LENGTH
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Title cannot exceed 150 characters"
+            return
+          end
+          title_buffer[title_bytesize] = 0_u8
+
+          # Initialize title string header
+          title = add_music_request_buffer.as(String)
+          title.initialize_header(title_bytesize, title_bytesize)
         end
       end
     rescue
