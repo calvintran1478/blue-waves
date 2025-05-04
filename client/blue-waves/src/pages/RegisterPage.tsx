@@ -48,7 +48,7 @@ const RegisterPage = () => {
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="password">Password</label>
-                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => {password = event.target.value}} required/>
+                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => {password = event.target.value}} minlength={8} maxLength={71} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="firstName">First Name</label>

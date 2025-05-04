@@ -58,10 +58,16 @@ module Validators::UserValidator
       end
     end
 
-    # Check password is at least 8 characters
+    # Check password meets length requirements
     if data.password.size < 8
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Password must be at least 8 characters"
+      return
+    end
+
+    if data.password.size > 71
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Password cannot exceed 71 characters"
       return
     end
 
