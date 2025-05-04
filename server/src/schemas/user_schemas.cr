@@ -9,7 +9,6 @@ module Schemas::UserSchemas
   #
   # The constraints above are checked after initializing instances of RegisterRequest.
   struct RegisterRequest
-    include JSON::Serializable
 
     getter email : String
     getter password : String
@@ -39,7 +38,6 @@ module Schemas::UserSchemas
 
   # Request body schema for POST requests sent to /api/v1/users/login
   struct LoginRequest
-    include JSON::Serializable
 
     getter email : String
     getter password : String
