@@ -3,12 +3,12 @@ require "http/status"
 require "http/cookie"
 require "crypto/bcrypt/password"
 require "uuid"
-require "jwt"
 require "validator"
 require "./controller"
 require "../schemas/user_schemas"
 require "../validators/user_validator"
 require "../repositories/user_repository"
+require "../utils/jwt"
 
 # Controller for handling requests made to the user resource
 class Controllers::UserController < Controllers::Controller
@@ -106,7 +106,7 @@ class Controllers::UserController < Controllers::Controller
 
     # Look up user in database
     user_id, password = @user_repository.get_login_password(data.email)
-    if password.nil?
+    if user_id.nil? || password.nil?
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "User with email not found"
       return
@@ -124,11 +124,11 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id, 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = {user_id: user_id, exp: Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN}
-    access_token = JWT.encode(access_claims, @API_SECRET, JWT::Algorithm::HS256)
+    access_claims = Utils::JWT::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
+    access_token = Utils::JWT.encode(access_claims, @API_SECRET)
 
-    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: 1, exp: Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN}
-    refresh_token = JWT.encode(refresh_claims, @API_SECRET, JWT::Algorithm::HS256)
+    refresh_claims = Utils::JWT::RefreshClaims.new(user_id, token_family_id, 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
+    refresh_token = Utils::JWT.encode(refresh_claims, @API_SECRET)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
@@ -153,15 +153,15 @@ class Controllers::UserController < Controllers::Controller
   # Path: /api/v1/users/token
   def refresh_token(context : HTTP::Server::Context) : Nil
     # Parse claims if token is not expired
-    begin
-      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, @API_SECRET, JWT::Algorithm::HS256)
-      user_id = payload["user_id"].as_s
-      token_family_id = payload["token_family_id"].as_s
-      sequence_number = payload["sequence_number"].as_i
-    rescue
+    payload = Utils::JWT.decode(context.request.cookies["refresh-token"].value.to_slice, @API_SECRET, :refresh_token)
+    if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
+    payload = payload.as(Utils::JWT::RefreshClaims)
+    user_id = payload.user_id
+    token_family_id = payload.token_family_id
+    sequence_number = payload.sequence_number
 
     # Check that the user exists in the database
     user_exists = @user_repository.exists_by_id(user_id)
@@ -188,11 +188,11 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id, sequence_number + 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = {user_id: user_id, exp: Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN}
-    access_token = JWT.encode(access_claims, @API_SECRET, JWT::Algorithm::HS256)
+    access_claims = Utils::JWT::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
+    access_token = Utils::JWT.encode(access_claims, @API_SECRET)
 
-    refresh_claims = {user_id: user_id, token_family_id: token_family_id, sequence_number: sequence_number + 1, exp: Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN}
-    refresh_token = JWT.encode(refresh_claims, @API_SECRET, JWT::Algorithm::HS256)
+    refresh_claims = Utils::JWT::RefreshClaims.new(user_id, token_family_id, sequence_number + 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
+    refresh_token = Utils::JWT.encode(refresh_claims, @API_SECRET)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
@@ -238,25 +238,26 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Parse access token and get user id
-    begin
-      payload, _ = JWT.decode(String.new(access_token), @API_SECRET, JWT::Algorithm::HS256)
-    rescue
+    payload = Utils::JWT.decode(access_token, @API_SECRET, :access_token)
+    if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
 
     # Determine remaining time for which the access token is valid
-    remaining_time = payload["exp"].as_i - Time.utc.to_unix
+    remaining_time = payload.exp - Time.utc.to_unix
 
     # Add access token to black list
     @auth_db.set(black_list_token_id, "", ex: remaining_time)
 
     # Invalidate token family if refresh token is not expired
-    begin
-      payload, _ = JWT.decode(context.request.cookies["refresh-token"].value, @API_SECRET, JWT::Algorithm::HS256)
-      @auth_db.del(payload["token_family_id"].as_s)
-    rescue
+    payload = Utils::JWT.decode(context.request.cookies["refresh-token"].value.to_slice, @API_SECRET, :refresh_token)
+    if payload.nil?
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
     end
+    payload = payload.as(Utils::JWT::RefreshClaims)
+    @auth_db.del(payload.token_family_id)
 
     # Remove refresh cookie from the client
     context.response.cookies << HTTP::Cookie.new(
