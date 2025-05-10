@@ -8,7 +8,7 @@ require "./controller"
 require "../schemas/user_schemas"
 require "../validators/user_validator"
 require "../repositories/user_repository"
-require "../utils/jwt"
+require "../utils/token"
 
 # Controller for handling requests made to the user resource
 class Controllers::UserController < Controllers::Controller
@@ -124,11 +124,11 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id, 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = Utils::JWT::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
-    access_token = Utils::JWT.encode(access_claims, @API_SECRET)
+    access_claims = Utils::Token::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
+    access_token = Utils::Token.encode(access_claims, @API_SECRET)
 
-    refresh_claims = Utils::JWT::RefreshClaims.new(user_id, token_family_id, 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
-    refresh_token = Utils::JWT.encode(refresh_claims, @API_SECRET)
+    refresh_claims = Utils::Token::RefreshClaims.new(user_id, token_family_id, 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
+    refresh_token = Utils::Token.encode(refresh_claims, @API_SECRET)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
@@ -159,13 +159,13 @@ class Controllers::UserController < Controllers::Controller
       return
     end
 
-    payload = Utils::JWT.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
+    payload = Utils::Token.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
 
-    payload = payload.as(Utils::JWT::RefreshClaims)
+    payload = payload.as(Utils::Token::RefreshClaims)
     user_id = payload.user_id
     token_family_id = payload.token_family_id
     sequence_number = payload.sequence_number
@@ -195,11 +195,11 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id, sequence_number + 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = Utils::JWT::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
-    access_token = Utils::JWT.encode(access_claims, @API_SECRET)
+    access_claims = Utils::Token::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
+    access_token = Utils::Token.encode(access_claims, @API_SECRET)
 
-    refresh_claims = Utils::JWT::RefreshClaims.new(user_id, token_family_id, sequence_number + 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
-    refresh_token = Utils::JWT.encode(refresh_claims, @API_SECRET)
+    refresh_claims = Utils::Token::RefreshClaims.new(user_id, token_family_id, sequence_number + 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
+    refresh_token = Utils::Token.encode(refresh_claims, @API_SECRET)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
@@ -245,7 +245,7 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Parse access token and get user id
-    payload = Utils::JWT.decode(access_token, @API_SECRET, :access_token)
+    payload = Utils::Token.decode(access_token, @API_SECRET, :access_token)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -260,9 +260,9 @@ class Controllers::UserController < Controllers::Controller
     # Invalidate token family if refresh token is not expired
     refresh_token_cookie = context.request.cookies["refresh-token"]?
     if !refresh_token_cookie.nil?
-      payload = Utils::JWT.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
+      payload = Utils::Token.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
       if !payload.nil?
-        @auth_db.del(payload.as(Utils::JWT::RefreshClaims).token_family_id)
+        @auth_db.del(payload.as(Utils::Token::RefreshClaims).token_family_id)
       end
     end
 

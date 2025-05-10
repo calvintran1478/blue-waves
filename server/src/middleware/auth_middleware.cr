@@ -1,6 +1,6 @@
 require "http/server"
 require "../utils/str"
-require "../utils/jwt"
+require "../utils/token"
 
 class Middleware::AuthMiddleware
   def initialize(@auth_db : Redis::PooledClient, @API_SECRET : String)
@@ -29,7 +29,7 @@ class Middleware::AuthMiddleware
     end
 
     # Parse access token and get user id
-    payload = Utils::JWT.decode(access_token, @API_SECRET, :access_token)
+    payload = Utils::Token.decode(access_token, @API_SECRET, :access_token)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
