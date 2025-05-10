@@ -153,11 +153,18 @@ class Controllers::UserController < Controllers::Controller
   # Path: /api/v1/users/token
   def refresh_token(context : HTTP::Server::Context) : Nil
     # Parse claims if token is not expired
-    payload = Utils::JWT.decode(context.request.cookies["refresh-token"].value.to_slice, @API_SECRET, :refresh_token)
+    refresh_token_cookie = context.request.cookies["refresh-token"]?
+    if refresh_token_cookie.nil?
+      context.response.status = HTTP::Status::UNAUTHORIZED
+      return
+    end
+
+    payload = Utils::JWT.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
+
     payload = payload.as(Utils::JWT::RefreshClaims)
     user_id = payload.user_id
     token_family_id = payload.token_family_id
@@ -251,13 +258,13 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(black_list_token_id, "", ex: remaining_time)
 
     # Invalidate token family if refresh token is not expired
-    payload = Utils::JWT.decode(context.request.cookies["refresh-token"].value.to_slice, @API_SECRET, :refresh_token)
-    if payload.nil?
-      context.response.status = HTTP::Status::UNAUTHORIZED
-      return
+    refresh_token_cookie = context.request.cookies["refresh-token"]?
+    if !refresh_token_cookie.nil?
+      payload = Utils::JWT.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
+      if !payload.nil?
+        @auth_db.del(payload.as(Utils::JWT::RefreshClaims).token_family_id)
+      end
     end
-    payload = payload.as(Utils::JWT::RefreshClaims)
-    @auth_db.del(payload.token_family_id)
 
     # Remove refresh cookie from the client
     context.response.cookies << HTTP::Cookie.new(
