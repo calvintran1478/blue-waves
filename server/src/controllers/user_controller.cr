@@ -19,6 +19,9 @@ class Controllers::UserController < Controllers::Controller
   @BCRYPT_COST : Int32
   @API_SECRET : String
 
+  USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
+  TOKEN_FAMILY_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
+
   def initialize(@user_repository : Repositories::UserRepository, @auth_db : Redis::PooledClient, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users".size
 
@@ -159,13 +162,14 @@ class Controllers::UserController < Controllers::Controller
       return
     end
 
-    payload = Utils::Token.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
+    payload = Utils::Token.decode_refresh_token(refresh_token_cookie.value.to_slice, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
 
-    payload = payload.as(Utils::Token::RefreshClaims)
     user_id = payload.user_id
     token_family_id = payload.token_family_id
     sequence_number = payload.sequence_number
@@ -245,7 +249,8 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Parse access token and get user id
-    payload = Utils::Token.decode(access_token, @API_SECRET, :access_token)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    payload = Utils::Token.decode_access_token(access_token, @API_SECRET, user_id_buffer.to_unsafe)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -258,11 +263,12 @@ class Controllers::UserController < Controllers::Controller
     @auth_db.set(black_list_token_id, "", ex: remaining_time)
 
     # Invalidate token family if refresh token is not expired
+    token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
     refresh_token_cookie = context.request.cookies["refresh-token"]?
     if !refresh_token_cookie.nil?
-      payload = Utils::Token.decode(refresh_token_cookie.value.to_slice, @API_SECRET, :refresh_token)
+      payload = Utils::Token.decode_refresh_token(refresh_token_cookie.value.to_slice, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
       if !payload.nil?
-        @auth_db.del(payload.as(Utils::Token::RefreshClaims).token_family_id)
+        @auth_db.del(payload.token_family_id)
       end
     end
 

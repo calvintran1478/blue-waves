@@ -13,6 +13,7 @@ class Controllers::MusicController < Controllers::Controller
 
   MUSIC_ID_LENGTH = 22
   MUSIC_ID_STRING_LENGTH = 35 # MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
+  USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
 
   ADD_MUSIC_REQUEST_BUFFER_SIZE = 276 # MAX_TITLE_STRING_LENGTH + MAX_ARTIST_STRING_LENGTH
 
@@ -87,7 +88,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music
   def add_music(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Validate user input
@@ -131,7 +133,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music
   def get_music(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Read pagination parameters
@@ -165,7 +168,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def get_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Perform rate limiting
@@ -186,7 +190,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}/cover-art
   def get_music_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Perform rate limiting
@@ -207,7 +212,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}/cover-art
   def set_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Perform rate limiting
@@ -257,7 +263,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def update_music(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Validate user input
@@ -288,7 +295,8 @@ class Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def delete_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
-    user_id = @auth_middleware.get_user(context)
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
     # Delete music file

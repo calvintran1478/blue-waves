@@ -22,9 +22,9 @@ module Utils::Token
       Bytes.new(buffer, ACCESS_CLAIMS_SIZE)
     end
 
-    def AccessClaims.from_bytes(bytes : Bytes) : (AccessClaims | Nil)
+    def AccessClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*) : (AccessClaims | Nil)
       return if bytes.size != ACCESS_CLAIMS_SIZE
-      user_id = String.new(Bytes.new(bytes.to_unsafe, UUID_LENGTH))
+      user_id = Utils::Str.stringify(Bytes.new(bytes.to_unsafe, UUID_LENGTH), user_id_buffer)
       exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + UUID_LENGTH, sizeof(Int64)))
 
       AccessClaims.new(user_id, exp)
@@ -57,14 +57,14 @@ module Utils::Token
       Bytes.new(buffer, REFRESH_CLAIMS_SIZE)
     end
 
-    def RefreshClaims.from_bytes(bytes : Bytes) : (RefreshClaims | Nil)
+    def RefreshClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : (RefreshClaims | Nil)
       return if bytes.size != REFRESH_CLAIMS_SIZE
       curr_buffer = bytes.to_unsafe
 
-      user_id = String.new(Bytes.new(curr_buffer, UUID_LENGTH))
+      user_id = Utils::Str.stringify(Bytes.new(curr_buffer, UUID_LENGTH), user_id_buffer)
       curr_buffer += UUID_LENGTH
 
-      token_family_id = String.new(Bytes.new(curr_buffer, UUID_LENGTH))
+      token_family_id = Utils::Str.stringify(Bytes.new(curr_buffer, UUID_LENGTH), token_family_id_buffer)
       curr_buffer += UUID_LENGTH
 
       sequence_number = IO::ByteFormat::NetworkEndian.decode(Int32, Bytes.new(curr_buffer, sizeof(Int32)))
@@ -80,16 +80,15 @@ module Utils::Token
     buffer = uninitialized UInt8[CLAIMS_BUFFER_SIZE]
     encoded_payload = Base64.urlsafe_encode(payload.to_bytes(buffer.to_unsafe), false)
     encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
-    "#{encoded_payload}.#{encoded_signature}"
+
+    encoded_payload + encoded_signature
   end
 
-  def decode(token : Bytes, key : String, token_type : Symbol) : (AccessClaims | RefreshClaims | Nil)
+  def decode_access_token(token : Bytes, key : String, user_id_buffer : UInt8*) : (AccessClaims | Nil)
     # Parse token into its two segments
-    dot_ptr = LibC.memchr(token.to_unsafe, '.'.ord, token.size).as(UInt8*)
-    return if dot_ptr.null?
-
-    encoded_payload = Bytes.new(token.to_unsafe, dot_ptr - token.to_unsafe)
-    encoded_signature = Bytes.new(dot_ptr + 1, token.size - encoded_payload.size - 1)
+    return if token.size != 102
+    encoded_payload = Bytes.new(token.to_unsafe, 59)
+    encoded_signature = Bytes.new(token.to_unsafe + 59, 43)
 
     # Verify signature
     expected_encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
@@ -99,12 +98,30 @@ module Utils::Token
     decoded_payload = Base64.decode(encoded_payload) rescue nil
     return if decoded_payload.nil?
 
-    case token_type
-    when :access_token  then payload = AccessClaims.from_bytes(decoded_payload)
-    when :refresh_token then payload = RefreshClaims.from_bytes(decoded_payload)
-    else return
-    end
+    payload = AccessClaims.from_bytes(decoded_payload, user_id_buffer)
+    return if payload.nil?
 
+    # Validate payload
+    return if payload.exp < Time.utc.to_unix
+
+    payload
+  end
+
+  def decode_refresh_token(token : Bytes, key : String, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : (RefreshClaims | Nil)
+    # Parse token into its two segments
+    return if token.size != 155
+    encoded_payload = Bytes.new(token.to_unsafe, 112)
+    encoded_signature = Bytes.new(token.to_unsafe + 112, 43)
+
+    # Verify signature
+    expected_encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
+    return if !Crypto::Subtle.constant_time_compare(encoded_signature, expected_encoded_signature)
+
+    # Decode payload claims
+    decoded_payload = Base64.decode(encoded_payload) rescue nil
+    return if decoded_payload.nil?
+
+    payload = RefreshClaims.from_bytes(decoded_payload, user_id_buffer, token_family_id_buffer)
     return if payload.nil?
 
     # Validate payload

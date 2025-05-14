@@ -6,7 +6,7 @@ class Middleware::AuthMiddleware
   def initialize(@auth_db : Redis::PooledClient, @API_SECRET : String)
   end
 
-  def get_user(context : HTTP::Server::Context) : (String | Nil)
+  def get_user(context : HTTP::Server::Context, user_id_buffer : UInt8*) : (String | Nil)
     # Check that the authorization header is included
     auth_header = context.request.headers["Authorization"]?
     if auth_header.nil?
@@ -29,7 +29,7 @@ class Middleware::AuthMiddleware
     end
 
     # Parse access token and get user id
-    payload = Utils::Token.decode(access_token, @API_SECRET, :access_token)
+    payload = Utils::Token.decode_access_token(access_token, @API_SECRET, user_id_buffer)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
