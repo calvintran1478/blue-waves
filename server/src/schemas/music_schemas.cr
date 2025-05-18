@@ -13,9 +13,11 @@ module Schemas::MusicSchemas
     getter artist : String
     getter music_file : Bytes
     getter art_file : Bytes | Nil
+    getter music_file_type : String
+    getter art_file_type : String | Nil
     getter file_buffer : UInt8*
 
-    def initialize(@title : String, @artist : String, @music_file : Bytes, @art_file : Bytes | Nil, @file_buffer : UInt8*)
+    def initialize(@title : String, @artist : String, @music_file : Bytes, @art_file : Bytes | Nil, @music_file_type : String, @art_file_type : String | Nil, @file_buffer : UInt8*)
     end
   end
 
@@ -43,8 +45,9 @@ module Schemas::MusicSchemas
   struct SetCoverArtRequest
 
     getter art_file : Bytes
+    getter art_file_type : String
 
-    def initialize(@art_file : Bytes)
+    def initialize(@art_file : Bytes, @art_file_type : String)
     end
   end
 

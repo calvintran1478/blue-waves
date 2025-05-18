@@ -45,7 +45,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.create("music_title", "artist", music_file, "user_id")
   # ```
-  def create(title : String, artist : String, music_file : Bytes, art_file : Bytes | Nil, user_id : String) : (String | Nil)
+  def create(title : String, artist : String, music_file : Bytes, art_file : Bytes | Nil, music_file_type : String, art_file_type : String | Nil, user_id : String) : (String | Nil)
     begin
       @db.transaction do |tx|
         # Store metadata about the music file
@@ -57,7 +57,7 @@ class Repositories::MusicRepository < Repositories::Repository
         object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
 
         # Upload music file to storage bucket
-        @music_db.put_object("blue-waves", object_id, music_file, DEFAULT_S3_HEADER)
+        @music_db.put_object("blue-waves", object_id, music_file, {"Content-Type" => music_file_type})
 
         # Upload cover art file to storage bucket (if one was included)
         unless art_file.nil?
@@ -71,7 +71,7 @@ class Repositories::MusicRepository < Repositories::Repository
           object_id = object_id_buffer.to_unsafe.as(String)
           object_id.initialize_header(bytesize, bytesize)
 
-          @music_db.put_object("blue-waves", object_id, art_file, DEFAULT_S3_HEADER)
+          @music_db.put_object("blue-waves", object_id, art_file, {"Content-Type" => art_file_type.as(String)})
         end
 
         return music_id
@@ -141,14 +141,14 @@ class Repositories::MusicRepository < Repositories::Repository
 
         # Fetch requested byte range from storage bucket
         @music_db.get_object("blue-waves", object_id, s3_headers) do |music_file|
-          context.response.content_type = "audio/mpeg"
+          context.response.content_type = music_file.headers["Content-Type"]
           context.response.status = HTTP::Status::PARTIAL_CONTENT
           IO.copy(music_file.body_io, context.response.output)
         end
       else
         # Fetch complete music file from storage bucket
         @music_db.get_object("blue-waves", object_id, DEFAULT_S3_HEADER) do |music_file|
-          context.response.content_type = "audio/mpeg"
+          context.response.content_type = music_file.headers["Content-Type"]
           context.response.headers["Cache-Control"] = "private"
           context.response.status = HTTP::Status::OK
           IO.copy(music_file.body_io, context.response.output)
@@ -187,7 +187,7 @@ class Repositories::MusicRepository < Repositories::Repository
 
       # Fetch music cover art from storage bucket
       @music_db.get_object("blue-waves", object_id, DEFAULT_S3_HEADER) do |art_file|
-        context.response.content_type = "image/jpeg"
+        context.response.content_type = art_file.headers["Content-Type"]
         context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
         context.response.headers["Cache-Control"] = "private, no-cache"
         context.response.status = HTTP::Status::OK
@@ -205,7 +205,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
-  def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : Bytes) : Bool
+  def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : Bytes, art_file_type : String) : Bool
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
@@ -219,7 +219,7 @@ class Repositories::MusicRepository < Repositories::Repository
     end
 
     # Set cover art
-    @music_db.put_object("blue-waves", object_id, art_file, DEFAULT_S3_HEADER)
+    @music_db.put_object("blue-waves", object_id, art_file, {"Content-Type" => art_file_type})
 
     return first_created
   end

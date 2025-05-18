@@ -35,6 +35,8 @@ module Validators::MusicValidator
     artist = nil
     music_file = nil
     art_file = nil
+    music_file_type = nil
+    art_file_type = nil
     file_buffer = nil
 
     content_length = context.request.content_length
@@ -61,6 +63,9 @@ module Validators::MusicValidator
 
             # Increment bytes read
             bytes_read += music_file_size
+
+            # Record content type of music file
+            music_file_type = part.headers["Content-Type"]
           else
             raise "Invalid music file"
           end
@@ -80,6 +85,9 @@ module Validators::MusicValidator
 
             # Increment bytes read
             bytes_read += art_file_size
+
+            # Record content type of art file
+            art_file_type = part.headers["Content-Type"]
           else
             raise "Invalid cover art file"
           end
@@ -130,7 +138,7 @@ module Validators::MusicValidator
     end
 
     # Check that the music file is included and does not exceed size limits
-    if music_file.nil?
+    if music_file.nil? || music_file_type.nil?
       LibC.free(file_buffer)
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "No music file found"
@@ -168,7 +176,7 @@ module Validators::MusicValidator
     end
 
     # Return validated data
-    return AddMusicRequest.new(title, artist, music_file, art_file, file_buffer)
+    return AddMusicRequest.new(title, artist, music_file, art_file, music_file_type, art_file_type, file_buffer)
   end
 
   def validate_set_cover_art_request(context : HTTP::Server::Context) : (SetCoverArtRequest | Nil)
@@ -207,7 +215,7 @@ module Validators::MusicValidator
     end
 
     # Return validated data
-    return SetCoverArtRequest.new(Bytes.new(art_file_buffer, art_file_size))
+    return SetCoverArtRequest.new(Bytes.new(art_file_buffer, art_file_size), content_type.as(String))
   end
 
   def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)
