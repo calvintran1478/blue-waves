@@ -15,6 +15,12 @@ module Validators::MusicValidator
   MAX_TITLE_STRING_LENGTH = 163 # MAX_TITLE_LENGTH + 1 + String::HEADER_SIZE
   MAX_ARTIST_STRING_LENGTH = 113 # MAX_ARTIST_LENGTH + 1 + String::HEADER_SIZE
 
+  PNG_HEADER = UInt8.static_array(137, 80, 78, 71, 13, 10, 26, 10)
+  PNG_IMAGE_END = UInt8.static_array(73, 69, 78, 68, 174, 66, 96, 130)
+
+  JPEG_HEADER = UInt8.static_array(255, 216)
+  JPEG_IMAGE_END = UInt8.static_array(255, 217)
+
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
     curr_buffer = Bytes.new(buffer, limit)
     remaining = limit
@@ -27,6 +33,16 @@ module Validators::MusicValidator
     end
 
     limit - remaining
+  end
+
+  @[AlwaysInline]
+  private def valid_png(art_file : Bytes) : Bool
+    art_file.size > 16 && art_file[...8] == PNG_HEADER.to_slice && art_file[(art_file.size - 8)...] == PNG_IMAGE_END.to_slice
+  end
+
+  @[AlwaysInline]
+  private def valid_jpeg(art_file : Bytes) : Bool
+    art_file.size > 4 && art_file[...2] == JPEG_HEADER.to_slice && art_file[(art_file.size - 2)...] == JPEG_IMAGE_END.to_slice
   end
 
   def validate_add_music_request(context : HTTP::Server::Context, add_music_request_buffer : UInt8*) : (AddMusicRequest | Nil)
@@ -70,27 +86,41 @@ module Validators::MusicValidator
             raise "Invalid music file"
           end
         when "artFile"
-          art_file_name = part.filename.as(String)
-          if art_file_name.ends_with?("jpg") || art_file_name.ends_with?("jpeg") || art_file_name.ends_with?("png")
-            # Initialize file buffer if not done already
-            if file_buffer.nil?
-              file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*)
-            end
-
-            # Read art file bytes
-            byte_limit = Math.min(buffer_size - bytes_read, MAX_COVER_ART_FILE_SIZE + 1)
-            art_file_buffer = file_buffer + bytes_read
-            art_file_size = read_io_to_buffer(part.body, art_file_buffer, byte_limit.to_i64)
-            art_file = Bytes.new(art_file_buffer, art_file_size)
-
-            # Increment bytes read
-            bytes_read += art_file_size
-
-            # Record content type of art file
-            art_file_type = part.headers["Content-Type"]
-          else
-            raise "Invalid cover art file"
+          # Check for correct file type
+          art_file_type = part.headers["Content-Type"]?
+          if art_file_type != "image/png" && art_file_type != "image/jpeg"
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Cover art file must be a PNG or JPEG"
+            return
           end
+
+          # Initialize file buffer if not done already
+          if file_buffer.nil?
+            file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*)
+          end
+
+          # Read art file bytes
+          byte_limit = Math.min(buffer_size - bytes_read, MAX_COVER_ART_FILE_SIZE + 1)
+          art_file_buffer = file_buffer + bytes_read
+          art_file_size = read_io_to_buffer(part.body, art_file_buffer, byte_limit.to_i64)
+          art_file = Bytes.new(art_file_buffer, art_file_size)
+
+          # Check for valid image file
+          if art_file_type == "image/png" && !valid_png(art_file)
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Invalid PNG"
+            return
+          elsif art_file_type == "image/jpeg" && !valid_jpeg(art_file)
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Invalid JPEG"
+            return
+          end
+
+          # Increment bytes read
+          bytes_read += art_file_size
         when "artist"
           # Read artist bytes
           artist_buffer = (add_music_request_buffer + MAX_TITLE_STRING_LENGTH).as(String).to_unsafe
@@ -180,7 +210,7 @@ module Validators::MusicValidator
   end
 
   def validate_set_cover_art_request(context : HTTP::Server::Context) : (SetCoverArtRequest | Nil)
-    # Check for image header
+    # Check for correct file type
     content_type = context.request.headers["Content-Type"]?
     if content_type != "image/jpeg" && content_type != "image/png"
       context.response.status = HTTP::Status::BAD_REQUEST
@@ -198,6 +228,7 @@ module Validators::MusicValidator
     byte_limit = Math.min(content_length.nil? ? UInt64::MAX : content_length, MAX_COVER_ART_FILE_SIZE + 1)
     art_file_buffer = LibC.malloc(byte_limit * sizeof(UInt8)).as(UInt8*)
     art_file_size = read_io_to_buffer(context.request.body.as(IO), art_file_buffer, byte_limit.to_i64)
+    art_file = Bytes.new(art_file_buffer, art_file_size)
 
     # Check that the cover art file is non-empty and satisfies size limits
     if art_file_size == 0
@@ -214,8 +245,19 @@ module Validators::MusicValidator
       return
     end
 
+    # Check that the image file is valid
+    if content_type == "image/png" && !valid_png(art_file)
+      LibC.free(art_file_buffer)
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Invalid PNG"
+    elsif content_type == "image/jpeg" && !valid_jpeg(art_file)
+      LibC.free(art_file_buffer)
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Invalid JPEG"
+    end
+
     # Return validated data
-    return SetCoverArtRequest.new(Bytes.new(art_file_buffer, art_file_size), content_type.as(String))
+    return SetCoverArtRequest.new(art_file, content_type.as(String))
   end
 
   def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)
