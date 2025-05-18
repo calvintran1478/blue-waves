@@ -22,8 +22,7 @@ module Utils::Token
       Bytes.new(buffer, ACCESS_CLAIMS_SIZE)
     end
 
-    def AccessClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*) : (AccessClaims | Nil)
-      return if bytes.size != ACCESS_CLAIMS_SIZE
+    def AccessClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*) : AccessClaims
       user_id = Utils::Str.stringify(Bytes.new(bytes.to_unsafe, UUID_LENGTH), user_id_buffer)
       exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + UUID_LENGTH, sizeof(Int64)))
 
@@ -57,8 +56,7 @@ module Utils::Token
       Bytes.new(buffer, REFRESH_CLAIMS_SIZE)
     end
 
-    def RefreshClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : (RefreshClaims | Nil)
-      return if bytes.size != REFRESH_CLAIMS_SIZE
+    def RefreshClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : RefreshClaims
       curr_buffer = bytes.to_unsafe
 
       user_id = Utils::Str.stringify(Bytes.new(curr_buffer, UUID_LENGTH), user_id_buffer)
@@ -99,7 +97,6 @@ module Utils::Token
     return if decoded_payload.nil?
 
     payload = AccessClaims.from_bytes(decoded_payload, user_id_buffer)
-    return if payload.nil?
 
     # Validate payload
     return if payload.exp < Time.utc.to_unix
@@ -122,7 +119,6 @@ module Utils::Token
     return if decoded_payload.nil?
 
     payload = RefreshClaims.from_bytes(decoded_payload, user_id_buffer, token_family_id_buffer)
-    return if payload.nil?
 
     # Validate payload
     return if payload.exp < Time.utc.to_unix
