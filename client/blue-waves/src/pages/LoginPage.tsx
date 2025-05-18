@@ -44,7 +44,7 @@ const LoginPage = () => {
                 <form onSubmit={loginUser} class="flex flex-col items-center">
                     <div class="flex flex-col m-4 text-xl">
                         <label for="email">Email</label>
-                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => {email = event.target.value; }} required/>
+                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => {email = event.target.value}} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="password">Password</label>
