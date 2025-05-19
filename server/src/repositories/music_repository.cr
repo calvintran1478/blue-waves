@@ -229,10 +229,19 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.update("user_id", "music_id", "title", "artist") # => true if update was successful
   # ```
-  def update(user_id : String, music_id : String, title : String, artist : String) : Bool
+  def update(user_id : String, music_id : String, title : String | Nil, artist : String | Nil) : Bool
     # Update metadata
-    result = @db.exec "UPDATE music SET title=$1,artist=$2 WHERE user_id=$3 AND music_id=$4", title, artist, user_id, music_id
-    return result.rows_affected != 0
+    if !title.nil? && !artist.nil?
+      result = @db.exec "UPDATE music SET title=$3,artist=$4 WHERE user_id=$1 AND music_id=$2", user_id, music_id, title, artist
+    elsif !title.nil? && artist.nil?
+      result = @db.exec "UPDATE music SET title=$3 WHERE user_id=$1 AND music_id=$2", user_id, music_id, title
+    elsif title.nil? && !artist.nil?
+      result = @db.exec "UPDATE music SET artist=$3 WHERE user_id=$1 AND music_id=$2", user_id, music_id, artist
+    else
+      return false
+    end
+
+    result.rows_affected != 0
   end
 
   # Deletes a music file from the user's collection along with its metadata

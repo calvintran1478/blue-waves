@@ -57,10 +57,10 @@ module Schemas::MusicSchemas
   struct UpdateMusicRequest
     include JSON::Serializable
 
-    getter title : String
-    getter artist : String
+    getter title : String | Nil
+    getter artist : String | Nil
 
-    def initialize(@title : String, @artist : String)
+    def initialize(@title : String | Nil, @artist : String | Nil)
     end
   end
 end

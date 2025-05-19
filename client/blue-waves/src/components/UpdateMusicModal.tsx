@@ -21,6 +21,9 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
     let artist = musicEntry["artist"];
     let artInput!: HTMLInputElement;
 
+    const originalTitle = title;
+    const originalArtist = artist;
+
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const [coverArtFile] = createResource(async () => {
@@ -33,13 +36,10 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
             method: "PATCH",
             headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "text/plain",
                 "Authorization": `Bearer ${token()}`
             },
-            body: JSON.stringify({
-                title: title,
-                artist: artist
-            }),
+            body: `${title !== originalTitle ? `1${title}` : "0"}\n${artist !== originalArtist ? `1${artist}` : "0"}`
         });
 
         if (response.ok) {
@@ -112,7 +112,10 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
     const handleUpdate = async (event: Event) => {
         event.preventDefault();
         // Change title and artist
-        const updatePromises = [updateMusic()];
+        const updatePromises = [];
+        if (title !== originalTitle || artist !== originalArtist) {
+            updatePromises.push(updateMusic());
+        }
 
         // Change cover art if new one was provided
         if (artInput.files!.length === 1) {
@@ -120,7 +123,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         }
 
         // Close modal
-        await Promise.all(updatePromises)
+        if (updatePromises.length !== 0) await Promise.all(updatePromises);
         props.closeCallback();
     }
 

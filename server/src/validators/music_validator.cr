@@ -261,49 +261,56 @@ module Validators::MusicValidator
   end
 
   def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)
-    # Parse JSON body
-    data = UpdateMusicRequest.from_json(context.request.body.as(IO)) rescue nil
-    if data.nil?
+    # Get request body
+    request_body = context.request.body.as(IO)
+
+    # Parse title
+    title = request_body.gets
+    if title.nil? || (title != "0" && !title.starts_with?('1'))
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
+    title = (title == "0") ? nil : title[1...]
+
+    # Parse artist
+    artist = request_body.gets
+    if artist.nil? || (artist != "0" && !artist.starts_with?('1'))
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+    artist = (artist == "0") ? nil : artist[1...]
 
     # Check the given title is non-blank and is within size limits
-    if data.title.blank?
-      context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "Title cannot be blank"
-      return
-    end
+    unless title.nil?
+      if title.blank?
+        context.response.status = HTTP::Status::BAD_REQUEST
+        context.response.output << "Title cannot be blank"
+        return
+      end
 
-    if data.title.size > MAX_TITLE_LENGTH
-      context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "Title cannot exceed 150 characters"
-      return
+      if title.size > MAX_TITLE_LENGTH
+        context.response.status = HTTP::Status::BAD_REQUEST
+        context.response.output << "Title cannot exceed 150 characters"
+        return
+      end
     end
 
     # Check the given artist is non-blank and is within size limits
-    if data.artist.blank?
-      context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "Artist cannot be blank"
-      return
-    end
-
-    if data.artist.size > MAX_ARTIST_LENGTH
-      context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "Artist cannot exceed 100 characters"
-      return
-    end
-
-    # Check that the given title name is valid
-    data.title.each_char do |ch|
-      if ch == '/' || ch == '.'
+    unless artist.nil?
+      if artist.blank?
         context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << "Invalid title"
+        context.response.output << "Artist cannot be blank"
+        return
+      end
+
+      if artist.size > MAX_ARTIST_LENGTH
+        context.response.status = HTTP::Status::BAD_REQUEST
+        context.response.output << "Artist cannot exceed 100 characters"
         return
       end
     end
 
     # Return validated data
-    return data
+    UpdateMusicRequest.new(title, artist)
   end
 end
