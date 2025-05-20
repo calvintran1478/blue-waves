@@ -128,15 +128,12 @@ class Controllers::UserController < Controllers::Controller
 
     # Generate access token and refresh token pair
     access_claims = Utils::Token::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
-    access_token = Utils::Token.encode(access_claims, @API_SECRET)
-
     refresh_claims = Utils::Token::RefreshClaims.new(user_id, token_family_id, 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
-    refresh_token = Utils::Token.encode(refresh_claims, @API_SECRET)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
-      value: refresh_token,
+      value: Utils::Token.encode_refresh_token(refresh_claims, @API_SECRET),
       max_age: Time::Span.new(seconds: @REFRESH_TOKEN_LIFESPAN),
       http_only: true,
       secure: true,
@@ -146,7 +143,7 @@ class Controllers::UserController < Controllers::Controller
     # Send access token
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::OK
-    context.response.output << access_token
+    Utils::Token.encode_access_token(access_claims, @API_SECRET, context.response.output)
   end
 
   # Returns a new refresh token access token pair the user can use to authenticate
@@ -200,15 +197,12 @@ class Controllers::UserController < Controllers::Controller
 
     # Generate access token and refresh token pair
     access_claims = Utils::Token::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
-    access_token = Utils::Token.encode(access_claims, @API_SECRET)
-
     refresh_claims = Utils::Token::RefreshClaims.new(user_id, token_family_id, sequence_number + 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
-    refresh_token = Utils::Token.encode(refresh_claims, @API_SECRET)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
-      value: refresh_token,
+      value: Utils::Token.encode_refresh_token(refresh_claims, @API_SECRET),
       max_age: Time::Span.new(seconds: @REFRESH_TOKEN_LIFESPAN),
       http_only: true,
       secure: true,
@@ -218,7 +212,7 @@ class Controllers::UserController < Controllers::Controller
     # Send access token
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::OK
-    context.response.output << access_token
+    Utils::Token.encode_access_token(access_claims, @API_SECRET, context.response.output)
   end
 
   # Logs out the user by invalidating their access token and preventing new

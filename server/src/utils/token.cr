@@ -6,7 +6,6 @@ module Utils::Token
   UUID_LENGTH = 36
   ACCESS_CLAIMS_SIZE = 44
   REFRESH_CLAIMS_SIZE = 84
-  CLAIMS_BUFFER_SIZE = 84
 
   struct AccessClaims
     getter user_id : String
@@ -74,8 +73,17 @@ module Utils::Token
     end
   end
 
-  def encode(payload : (AccessClaims | RefreshClaims), key : String) : String
-    buffer = uninitialized UInt8[CLAIMS_BUFFER_SIZE]
+  def encode_access_token(payload : AccessClaims, key : String, io : IO) : Nil
+    buffer = uninitialized UInt8[ACCESS_CLAIMS_SIZE]
+    encoded_payload = Base64.urlsafe_encode(payload.to_bytes(buffer.to_unsafe), false)
+    encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
+
+    io << encoded_payload
+    io << encoded_signature
+  end
+
+  def encode_refresh_token(payload : RefreshClaims, key : String) : String
+    buffer = uninitialized UInt8[REFRESH_CLAIMS_SIZE]
     encoded_payload = Base64.urlsafe_encode(payload.to_bytes(buffer.to_unsafe), false)
     encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
 
