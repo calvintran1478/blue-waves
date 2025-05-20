@@ -16,6 +16,7 @@ class Controllers::MusicController < Controllers::Controller
   USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
 
   ADD_MUSIC_REQUEST_BUFFER_SIZE = 276 # MAX_TITLE_STRING_LENGTH + MAX_ARTIST_STRING_LENGTH
+  UPDATE_MUSIC_REQUEST_BUFFER_SIZE = 276 # MAX_TITLE_STRING_LENGTH + MAX_ARTIST_STRING_LENGTH
 
   def initialize(@music_repository : Repositories::MusicRepository, @auth_middleware : Middleware::AuthMiddleware, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users/music".size
@@ -268,7 +269,8 @@ class Controllers::MusicController < Controllers::Controller
     return if user_id.nil?
 
     # Validate user input
-    data = validate_update_music_request context
+    update_music_buffer = uninitialized UInt8[UPDATE_MUSIC_REQUEST_BUFFER_SIZE]
+    data = validate_update_music_request(context, update_music_buffer.to_unsafe)
     return if data.nil?
 
     # Update music file

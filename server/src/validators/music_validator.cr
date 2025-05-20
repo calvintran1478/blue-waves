@@ -21,6 +21,8 @@ module Validators::MusicValidator
   JPEG_HEADER = UInt8.static_array(255, 216)
   JPEG_IMAGE_END = UInt8.static_array(255, 217)
 
+  UPDATE_MUSIC_WORK_BUFFER_SIZE = 254
+
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
     curr_buffer = Bytes.new(buffer, limit)
     remaining = limit
@@ -260,25 +262,38 @@ module Validators::MusicValidator
     return SetCoverArtRequest.new(art_file, content_type.as(String))
   end
 
-  def validate_update_music_request(context : HTTP::Server::Context) : (UpdateMusicRequest | Nil)
+  def validate_update_music_request(context : HTTP::Server::Context, update_music_buffer : UInt8*) : (UpdateMusicRequest | Nil)
     # Get request body
-    request_body = context.request.body.as(IO)
+    work_buffer = uninitialized UInt8[UPDATE_MUSIC_WORK_BUFFER_SIZE]
+    curr_buffer = work_buffer.to_unsafe
+    bytes_read = read_io_to_buffer(context.request.body.as(IO), curr_buffer, UPDATE_MUSIC_WORK_BUFFER_SIZE)
+
+    newline_ptr = LibC.memchr(curr_buffer, '\n'.ord, Math.min(MAX_TITLE_LENGTH + 2, bytes_read)).as(UInt8*)
+    if newline_ptr.null?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
 
     # Parse title
-    title = request_body.gets
-    if title.nil? || (title != "0" && !title.starts_with?('1'))
+    title_length = (newline_ptr - curr_buffer) - 1
+    if title_length == -1 || (curr_buffer[0] != 48 && curr_buffer[0] != 49)
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
-    title = (title == "0") ? nil : title[1...]
+
+    title_buffer = update_music_buffer
+    title = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(Bytes.new(curr_buffer + 1, title_length), title_buffer)
 
     # Parse artist
-    artist = request_body.gets
-    if artist.nil? || (artist != "0" && !artist.starts_with?('1'))
+    curr_buffer = newline_ptr + 1
+    artist_length = bytes_read - title_length - 3
+    if artist_length == -1 || (curr_buffer[0] != 48 && curr_buffer[0] != 49)
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
-    artist = (artist == "0") ? nil : artist[1...]
+
+    artist_buffer = update_music_buffer + MAX_TITLE_STRING_LENGTH
+    artist = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(Bytes.new(curr_buffer + 1, artist_length), artist_buffer)
 
     # Check the given title is non-blank and is within size limits
     unless title.nil?
