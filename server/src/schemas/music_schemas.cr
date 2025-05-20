@@ -55,7 +55,6 @@ module Schemas::MusicSchemas
   #
   # title is expected be non blank
   struct UpdateMusicRequest
-    include JSON::Serializable
 
     getter title : String | Nil
     getter artist : String | Nil
