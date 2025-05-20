@@ -21,6 +21,10 @@ module Validators::MusicValidator
   JPEG_HEADER = UInt8.static_array(255, 216)
   JPEG_IMAGE_END = UInt8.static_array(255, 217)
 
+  OGG_HEADER = UInt8.static_array(79, 103, 103, 83)
+
+  MP3_HEADER = UInt8.static_array(73, 68, 51, 3)
+
   UPDATE_MUSIC_WORK_BUFFER_SIZE = 254
 
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
@@ -47,6 +51,16 @@ module Validators::MusicValidator
     art_file.size > 4 && art_file[...2] == JPEG_HEADER.to_slice && art_file[(art_file.size - 2)...] == JPEG_IMAGE_END.to_slice
   end
 
+  @[AlwaysInline]
+  private def valid_ogg(music_file : Bytes) : Bool
+    music_file.size > 4 && music_file[...4] == OGG_HEADER.to_slice
+  end
+
+  @[AlwaysInline]
+  private def valid_mp3(music_file : Bytes) : Bool
+    music_file.size > 4 && music_file[...4] == MP3_HEADER.to_slice
+  end
+
   def validate_add_music_request(context : HTTP::Server::Context, add_music_request_buffer : UInt8*) : (AddMusicRequest | Nil)
     # Initialize variables
     title = nil
@@ -66,27 +80,41 @@ module Validators::MusicValidator
       HTTP::FormData.parse(context.request) do |part|
         case part.name
         when "musicFile"
-          music_file_name = part.filename.as(String)
-          if music_file_name.ends_with?(".mp3") || music_file_name.ends_with?(".ogg")
-            # Initialize file buffer if not done already
-            if file_buffer.nil?
-              file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*)
-            end
-
-            # Read music file bytes
-            byte_limit = Math.min(buffer_size - bytes_read, MAX_MUSIC_FILE_SIZE + 1)
-            music_file_buffer = file_buffer + bytes_read
-            music_file_size = read_io_to_buffer(part.body, music_file_buffer, byte_limit.to_i64)
-            music_file = Bytes.new(music_file_buffer, music_file_size)
-
-            # Increment bytes read
-            bytes_read += music_file_size
-
-            # Record content type of music file
-            music_file_type = part.headers["Content-Type"]
-          else
-            raise "Invalid music file"
+          # Check for correct file type
+          music_file_type = part.headers["Content-Type"]
+          if music_file_type != "video/ogg" && music_file_type != "audio/mpeg"
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Music file must be an MP3 or OGG"
+            return
           end
+
+          # Initialize file buffer if not done already
+          if file_buffer.nil?
+            file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*)
+          end
+
+          # Read music file bytes
+          byte_limit = Math.min(buffer_size - bytes_read, MAX_MUSIC_FILE_SIZE + 1)
+          music_file_buffer = file_buffer + bytes_read
+          music_file_size = read_io_to_buffer(part.body, music_file_buffer, byte_limit.to_i64)
+          music_file = Bytes.new(music_file_buffer, music_file_size)
+
+          # Check for valid music file
+          if music_file_type == "video/ogg" && !valid_ogg(music_file)
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Invalid OGG"
+            return
+          elsif music_file_type == "audio/mp3" && !valid_mp3(music_file)
+            LibC.free(file_buffer) unless file_buffer.nil?
+            context.response.status = HTTP::Status::BAD_REQUEST
+            context.response.output << "Invalid MP3"
+            return
+          end
+
+          # Increment bytes read
+          bytes_read += music_file_size
         when "artFile"
           # Check for correct file type
           art_file_type = part.headers["Content-Type"]?
