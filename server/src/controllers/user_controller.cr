@@ -229,7 +229,7 @@ class Controllers::UserController < Controllers::Controller
     end
 
     # Extract access token
-    if auth_header.size <= 7 || !auth_header.starts_with?("Bearer ")
+    if !auth_header.starts_with?("Bearer ")
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
