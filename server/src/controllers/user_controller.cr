@@ -22,6 +22,9 @@ class Controllers::UserController < Controllers::Controller
   USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
   TOKEN_FAMILY_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
 
+  EXPECTED_AUTH_HEADER_SIZE = 109 # 7 + ACCESS_TOKEN_SIZE
+  BLACK_LIST_TOKEN_ID_STRING_LENGTH = 126 # 11 + ACCESS_TOKEN_SIZE + 1 + String::HEADER_SIZE
+
   def initialize(@user_repository : Repositories::UserRepository, @auth_db : Redis::PooledClient, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users".size
 
@@ -223,7 +226,7 @@ class Controllers::UserController < Controllers::Controller
   def logout_user(context : HTTP::Server::Context) : Nil
     # Check that the authorization header is included
     auth_header = context.request.headers["Authorization"]?
-    if auth_header.nil?
+    if auth_header.nil? || auth_header.size != EXPECTED_AUTH_HEADER_SIZE
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
@@ -236,7 +239,8 @@ class Controllers::UserController < Controllers::Controller
     access_token = auth_header.unsafe_byte_slice(7)
 
     # Check if the access token is black listed
-    black_list_token_id = Utils::Str.combine_bytes("black-list:", access_token)
+    black_list_token_id_buffer = uninitialized UInt8[BLACK_LIST_TOKEN_ID_STRING_LENGTH]
+    black_list_token_id = Utils::Str.stringify("black-list:", access_token, string_buffer: black_list_token_id_buffer.to_unsafe)
     if @auth_db.exists(black_list_token_id) == 1
       context.response.status = HTTP::Status::UNAUTHORIZED
       return

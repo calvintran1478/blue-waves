@@ -92,7 +92,6 @@ module Utils::Token
 
   def decode_access_token(token : Bytes, key : String, user_id_buffer : UInt8*) : (AccessClaims | Nil)
     # Parse token into its two segments
-    return if token.size != 102
     encoded_payload = Bytes.new(token.to_unsafe, 59)
     encoded_signature = Bytes.new(token.to_unsafe + 59, 43)
 
