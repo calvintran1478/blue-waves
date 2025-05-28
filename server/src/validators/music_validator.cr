@@ -72,6 +72,12 @@ module Validators::MusicValidator
     file_buffer = nil
 
     content_length = context.request.content_length
+    if content_length == 0
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Content length must be positive"
+      return
+    end
+
     buffer_size = Math.min(content_length.nil? ? UInt64::MAX : content_length, MAX_MUSIC_FILE_SIZE + MAX_COVER_ART_FILE_SIZE + 2)
     bytes_read = 0
 
@@ -90,8 +96,10 @@ module Validators::MusicValidator
           end
 
           # Initialize file buffer if not done already
-          if file_buffer.nil?
-            file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*)
+          file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*) if file_buffer.nil?
+          if file_buffer.null?
+            context.response.status = HTTP::Status::INTERNAL_SERVER_ERROR
+            return
           end
 
           # Read music file bytes
@@ -126,8 +134,10 @@ module Validators::MusicValidator
           end
 
           # Initialize file buffer if not done already
-          if file_buffer.nil?
-            file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*)
+          file_buffer = LibC.malloc(buffer_size * sizeof(UInt8)).as(UInt8*) if file_buffer.nil?
+          if file_buffer.null?
+            context.response.status = HTTP::Status::INTERNAL_SERVER_ERROR
+            return
           end
 
           # Read art file bytes
@@ -255,8 +265,19 @@ module Validators::MusicValidator
     end
 
     content_length = context.request.content_length
+    if content_length == 0
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Content length must be positive"
+      return
+    end
+
     byte_limit = Math.min(content_length.nil? ? UInt64::MAX : content_length, MAX_COVER_ART_FILE_SIZE + 1)
     art_file_buffer = LibC.malloc(byte_limit * sizeof(UInt8)).as(UInt8*)
+    if art_file_buffer.null?
+      context.response.status = HTTP::Status::INTERNAL_SERVER_ERROR
+      return
+    end
+
     art_file_size = read_io_to_buffer(context.request.body.as(IO), art_file_buffer, byte_limit.to_i64)
     art_file = Bytes.new(art_file_buffer, art_file_size)
 
