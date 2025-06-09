@@ -31,15 +31,6 @@ class Repositories::MusicRepository < Repositories::Repository
     return @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND music_id=$2)", user_id, music_id, as: Bool
   end
 
-  # Returns whether a music file with the given title exists in the user's collection
-  #
-  # ```
-  # music_repository.exists_by_title("user_id", "music_title") # => true if user with "user_id" has "music_title" in their collection
-  # ```
-  def exists_by_title(user_id : String, title : String) : Bool
-    return @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND title=$2)", user_id, title, as: Bool
-  end
-
   # Adds a music file to the user's collection.
   #
   # ```

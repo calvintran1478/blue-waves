@@ -98,14 +98,6 @@ class Controllers::MusicController < Controllers::Controller
     data = validate_add_music_request(context, add_music_request_buffer.to_unsafe)
     return if data.nil?
 
-    # Check if music with the given title already exists
-    music_exists = @music_repository.exists_by_title(user_id, data.title)
-    if music_exists
-      context.response.status = HTTP::Status::CONFLICT
-      context.response.output << "Music with given title already exists"
-      return
-    end
-
     # Add music to the user's collection
     music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, data.music_file_type, data.art_file_type, user_id)
 
