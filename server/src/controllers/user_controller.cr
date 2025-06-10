@@ -11,7 +11,7 @@ require "../repositories/user_repository"
 require "../utils/token"
 
 # Controller for handling requests made to the user resource
-class Controllers::UserController < Controllers::Controller
+struct Controllers::UserController < Controllers::Controller
   include Validators::UserValidator
 
   @ACCESS_TOKEN_LIFESPAN : Int32

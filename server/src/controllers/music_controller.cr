@@ -8,7 +8,7 @@ require "../repositories/music_repository"
 require "../utils/str"
 
 # Controller for handling requests made to the music resource
-class Controllers::MusicController < Controllers::Controller
+struct Controllers::MusicController < Controllers::Controller
   include Validators::MusicValidator
 
   MUSIC_ID_LENGTH = 22
