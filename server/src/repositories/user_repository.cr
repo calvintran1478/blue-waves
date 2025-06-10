@@ -13,7 +13,7 @@ class Repositories::UserRepository < Repositories::Repository
   # user_repository.exists_by_email("user@email.com") # => true if user@email.com exists in the database
   # ```
   def exists_by_email(email : String) : Bool
-    return @db.query_one "SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", email, as: Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", email, as: Bool
   end
 
   # Returns whether a user with the given id exists.
@@ -22,7 +22,7 @@ class Repositories::UserRepository < Repositories::Repository
   # user_repository.exists_by_id("user_id") # => true if user_id exists in the database
   # ```
   def exists_by_id(user_id : String) : Bool
-    return @db.query_one "SELECT EXISTS(SELECT 1 FROM users WHERE user_id=$1)", user_id, as: Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM users WHERE user_id=$1)", user_id, as: Bool
   end
 
   # Adds a user to the database.
@@ -40,11 +40,9 @@ class Repositories::UserRepository < Repositories::Repository
   # user_repository.get_login_password("user@email.com") # => "user_id", "hashed_password"
   # ```
   def get_login_password(email : String) : (Tuple(String, Crypto::Bcrypt::Password) | Tuple(Nil, Nil))
-    begin
-      user_id, password = @db.query_one "SELECT user_id, password FROM users WHERE email=$1", email, as: { UUID, String }
-      return user_id.to_s, Crypto::Bcrypt::Password.new(password)
-    rescue DB::NoResultsError
-      return nil, nil
-    end
+    user_id, password = @db.query_one "SELECT user_id, password FROM users WHERE email=$1", email, as: { UUID, String }
+    return user_id.to_s, Crypto::Bcrypt::Password.new(password)
+  rescue DB::NoResultsError
+    return nil, nil
   end
 end
