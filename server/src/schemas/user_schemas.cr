@@ -9,7 +9,6 @@ module Schemas::UserSchemas
   #
   # The constraints above are checked after initializing instances of RegisterRequest.
   struct RegisterRequest
-    include JSON::Serializable
 
     getter email : String
     getter password : String
@@ -24,40 +23,26 @@ module Schemas::UserSchemas
   #
   # Represents the registered user in the database.
   struct RegisterResponse
-    include JSON::Serializable
 
     def initialize(@email : String, @first_name : String, @last_name : String)
+    end
+
+    def to_s(io : IO) : Nil
+      io << "{"
+      io << "\"email\":\"" << @email << "\","
+      io << "\"first_name\":\"" << @first_name << "\","
+      io << "\"last_name\":\"" << @last_name << "\""
+      io << "}"
     end
   end
 
   # Request body schema for POST requests sent to /api/v1/users/login
   struct LoginRequest
-    include JSON::Serializable
 
     getter email : String
     getter password : String
 
     def initialize(@email : String, @password : String)
-    end
-  end
-
-  # Response body schema for server responses to /api/v1/users/login POST requests
-  #
-  # Contains an access token the user can use to authenticate on future endpoints
-  struct LoginResponse
-    include JSON::Serializable
-
-    def initialize(@access_token : String)
-    end
-  end
-
-  # Response body schema for server responses to /api/v1/users/token GET requests
-  #
-  # Contains an access token the user can use to authenticate on future endpoints
-  struct RefreshTokenResponse
-    include JSON::Serializable
-
-    def initialize(@access_token : String)
     end
   end
 end

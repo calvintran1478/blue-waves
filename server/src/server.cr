@@ -3,11 +3,14 @@ require "db"
 require "pg"
 require "redis"
 require "awscr-s3"
+require "./middleware/auth_middleware"
+require "./middleware/rate_limit_middleware"
 require "./controllers/user_controller"
 require "./controllers/music_controller"
 require "./repositories/user_repository"
 require "./repositories/music_repository"
 require "./utils/env"
+require "./utils/config"
 
 # Load environment
 Utils::Env.load_env()
@@ -34,13 +37,18 @@ db = DB.open("postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NA
 auth_db = Redis::PooledClient.new(host: AUTH_DB_HOST, port: AUTH_DB_PORT.to_i, password: AUTH_DB_PASSWORD, ssl: AUTH_TLS_ENABLED == "true")
 music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRET, endpoint: MUSIC_DB_ENDPOINT)
 
+# Initialize middleware
+auth_middleware = Middleware::AuthMiddleware.new(auth_db, ENV["API_SECRET"])
+token_buckets = Utils::Config.load_rate_limit_config("rate_limit.conf", auth_db)
+rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_buckets)
+
 # Initialize repositories
 user_repository = Repositories::UserRepository.new(db)
 music_repository = Repositories::MusicRepository.new(db, music_db)
 
 # Initialize resource controllers
-user_controller = Controllers::UserController.new(user_repository, auth_db)
-music_controller = Controllers::MusicController.new(music_repository)
+user_controller = Controllers::UserController.new(user_repository, auth_db, rate_limit_middleware)
+music_controller = Controllers::MusicController.new(music_repository, auth_middleware, rate_limit_middleware)
 
 # Define server handling of requests
 server = HTTP::Server.new do |context|

@@ -2,31 +2,19 @@ version: 2.0
 shards:
   awscr-s3:
     git: https://github.com/taylorfinnell/awscr-s3.git
-    version: 0.8.3
+    version: 0.10.0
 
   awscr-signer:
     git: https://github.com/taylorfinnell/awscr-signer.git
-    version: 0.8.2
-
-  bindata:
-    git: https://github.com/spider-gazelle/bindata.git
-    version: 2.1.0
+    version: 0.9.0
 
   db:
     git: https://github.com/crystal-lang/crystal-db.git
     version: 0.13.1
 
-  jwt:
-    git: https://github.com/crystal-community/jwt.git
-    version: 1.6.1
-
-  openssl_ext:
-    git: https://github.com/spider-gazelle/openssl_ext.git
-    version: 2.4.4
-
   pg:
     git: https://github.com/will/crystal-pg.git
-    version: 0.28.0
+    version: 0.29.0
 
   pool:
     git: https://github.com/ysbaddaden/pool.git

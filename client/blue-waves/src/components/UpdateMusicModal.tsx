@@ -1,7 +1,8 @@
-import { createSignal, createResource, onMount, Switch, Match, Accessor, Resource, Setter, Show } from "solid-js";
+import { createSignal, createResource, useContext, Switch, Match, Accessor, Resource, Signal, Setter, Show } from "solid-js";
 import { until } from "@solid-primitives/promise"; 
-import { createQuery, CreateQueryResult } from "@tanstack/solid-query";
-import { api } from "../index.tsx";
+import { openDB } from "idb";
+import { getToken } from "../utils/token";
+import { AuthContext } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Expected fields for each music entry
@@ -11,109 +12,119 @@ interface MusicEntry {
     artist: string
 }
 
-const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtQuery: CreateQueryResult}) => {
-    const [title, setTitle] = createSignal("");
-    const [artist, setArtist] = createSignal("");
+const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtLoading: Accessor<boolean>}) => {
+    const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId())!
+    const [setCoverArtLoading, setSetCoverArtLoading] = createSignal(false);
+    const [deleteMusicLoading, setDeleteMusicLoading] = createSignal(false);
+
+    let title = musicEntry["title"];
+    let artist = musicEntry["artist"];
     let artInput!: HTMLInputElement;
 
-    onMount(() => {
-        const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId());
-        setTitle(musicEntry!["title"]);
-        setArtist(musicEntry!["artist"]);
-    })
+    const originalTitle = title;
+    const originalArtist = artist;
+
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const [coverArtFile] = createResource(async () => {
-        await until(() => !props.fetchCoverArtQuery.isFetching)
+        await until(() => !props.fetchCoverArtLoading());
         return props.coverArtUrl();
     });
 
-    const updateMusicQuery = createQuery(() => ({
-        queryKey: ["UpdateMusic"],
-        queryFn: async () => {
-            // Update music metadata
-            await api.patch(`users/music/${props.musicId()}`, {
-                headers: {
-                    "Authorization": `Bearer ${props.token}`
-                },
-                json: {
-                    title: title(),
-                    artist: artist()
-                }
-            });
+    const updateMusic = async() => {
+        // Update music metadata
+        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "text/plain",
+                "Authorization": `Bearer ${token()}`
+            },
+            body: `${title !== originalTitle ? `1${title}` : "0"}\n${artist !== originalArtist ? `1${artist}` : "0"}`
+        });
 
+        if (response.ok) {
             // Update music entry
             const newMusicEntries = [...props.musicEntries()!];
             const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
-            newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title(), "artist": artist()};
+            newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title, "artist": artist};
             props.setMusicEntries(newMusicEntries);
-
-            return null;
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await updateMusic();
         }
-    }));
+    }
 
-    const deleteMusicQuery = createQuery(() => ({
-        queryKey: ["DeleteMusic"],
-        queryFn: async () => {
-            // Delete music
-            await api.delete(`users/music/${props.musicId()}`, {
-                headers: {
-                    "Authorization": `Bearer ${props.token}`
-                }
-            });
+    const deleteMusic = async(event: Event) => {
+        event.preventDefault();
+        setDeleteMusicLoading(true);
 
+        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token()}` },
+        });
+
+        if (response.ok) {
             // Delete music entry
             const newMusicEntries = [...props.musicEntries()!];
             const deleteIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
             newMusicEntries.splice(deleteIndex, 1);
             props.setMusicEntries(newMusicEntries);
 
+            // Delete cache entry
+            const db = await openDB("musicFileDB", 1, {
+                upgrade(database) {
+                    database.createObjectStore("musicFiles", { keyPath: "music_id" });
+                    database.createObjectStore("coverArtFiles", { keyPath: "music_id" });
+                },
+            })
+            await db.delete("musicFiles", props.musicId());
+            await db.delete("coverArtFiles", props.musicId());
+
             // Close modal
             props.closeCallback();
-
-            return null;
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await deleteMusic(event);
         }
-    }))
 
-    const setCoverArtQuery = createQuery(() => ({
-        queryKey: ["SetCoverArt"],
-        queryFn: async () => {
-            // Create form data
-            const data = new FormData();
-            data.append("artFile", artInput.files![0]);
+        setDeleteMusicLoading(false);
+    }
 
-            // Set cover art
-            await api.put(`users/music/${props.musicId()}/cover-art`, {
-                headers: {
-                    "Authorization": `Bearer ${props.token}`
-                },
-                body: data
-            });
+    const setCoverArt = async () => {
+        // Set cover art
+        setSetCoverArtLoading(true);
+        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}/cover-art`, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${token()}` },
+            body: artInput.files![0]
+        })
 
+        if (response.ok) {
             // Invalidate cover art cache
             props.setMusicId("");
-
-            return null;
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await setCoverArt();
         }
-    }));
+        setSetCoverArtLoading(false);
+    }
 
-    const updateMusic = async (event: Event) => {
+    const handleUpdate = async (event: Event) => {
         event.preventDefault();
         // Change title and artist
-        const updatePromises = [updateMusicQuery.refetch()];
+        const updatePromises = [];
+        if (title !== originalTitle || artist !== originalArtist) {
+            updatePromises.push(updateMusic());
+        }
 
         // Change cover art if new one was provided
         if (artInput.files!.length === 1) {
-            updatePromises.push(setCoverArtQuery.refetch());
+            updatePromises.push(setCoverArt());
         }
 
         // Close modal
-        await Promise.all(updatePromises)
+        if (updatePromises.length !== 0) await Promise.all(updatePromises);
         props.closeCallback();
-    }
-
-    const deleteMusic = async (event: Event) => {
-        event.preventDefault();
-        deleteMusicQuery.refetch();
     }
 
     return (
@@ -123,26 +134,26 @@ const UpdateMusicModal = (props: { token: string, musicId: Accessor<string>, set
                 <button onClick={deleteMusic}>delete</button>
             </div>
             <div class="flex justify-around">
-                <form onSubmit={updateMusic} class="flex flex-col justify-center items-center">
+                <form onSubmit={handleUpdate} class="flex flex-col justify-center items-center">
                     <div class="flex items-center m-4">
                         <label for="title" class="text-lg m-2">Title</label>
-                        <input id="title" class="border-2 m-2 w-60 h-8" value={title()} onChange={(event) => setTitle(event.target.value)}/>
+                        <input id="title" class="border-2 m-2 w-60 h-8" value={title} onChange={(event) => {title = event.target.value}} maxlength={150}/>
                     </div>
                     <div class="flex items-center m-4">
                         <label for="artist" class="text-lg m-2">Artist</label>
-                        <input id="artist" class="border-2 m-2 w-60 h-8" value={artist()} onChange={(event) => setArtist(event.target.value)}/>
+                        <input id="artist" class="border-2 m-2 w-60 h-8" value={artist} onChange={(event) => {artist = event.target.value}} maxlength={100}/>
                     </div>
                     <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
-                    <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={setCoverArtQuery.isFetching}>
+                    <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={setCoverArtLoading()}>
                         <Switch fallback={<span class="mr-2">Update music</span>}>
-                            <Match when={setCoverArtQuery.isFetching}>
+                            <Match when={setCoverArtLoading()}>
                                 <span class="mr-2">Updating</span>
                             </Match>
-                            <Match when={deleteMusicQuery.isFetching}>
+                            <Match when={deleteMusicLoading()}>
                                 <span class="mr-2">Deleting</span>
                             </Match>
                         </Switch>
-                        <Show when={setCoverArtQuery.isFetching || deleteMusicQuery.isFetching}>
+                        <Show when={setCoverArtLoading() || deleteMusicLoading()}>
                             <LoadingSpinner/>
                         </Show>
                     </button>

@@ -1,6 +1,34 @@
-import { A } from "@solidjs/router";
+import { useContext, Signal } from "solid-js"; 
+import { A, useNavigate } from "@solidjs/router";
+import DropDownMenu from "../components/DropDownMenu.tsx";
+import { getToken } from "../utils/token";
+import { AuthContext } from "../index.tsx"; 
 
 const HomePage = () => {
+
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
+
+    const navigate = useNavigate();
+
+    const logout = async () => {
+        // Fetch new token if user refreshed the page
+        if (token() === "") setToken(await getToken());
+
+        // Logout user
+        const response = await fetch("http://localhost:8080/api/v1/users/logout", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "include"
+        });
+
+        if (response.ok) {
+            setToken("");
+            navigate("/login");
+        } else if (response.status === 401) {
+            setToken(await getToken());
+            await logout();
+        }
+    }
 
     return (
         <div class="flex">
@@ -11,9 +39,15 @@ const HomePage = () => {
                 </nav>
             </div>
             <div class="flex flex-col w-4/5">
+                <div class="flex justify-end">
+                    <div class="m-5">
+                        <DropDownMenu onSelect={logout}>
+                        </DropDownMenu>
+                    </div>
+                </div>
                 <div class="flex justify-between h-20 p-6">
                     <h1 class="text-2xl font-medium">Recently Played</h1>
-                    <A href="/recently-played" class="text-2xl ">See All</A>
+                    <A href="/recently-played" class="text-2xl">See All</A>
                 </div>
             </div>
         </div>

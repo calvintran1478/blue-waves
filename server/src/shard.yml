@@ -10,7 +10,5 @@ dependencies:
     github: taylorfinnell/awscr-s3
   redis:
     github: stefanwille/crystal-redis
-  jwt:
-    github: crystal-community/jwt
 
 license: MIT

@@ -1,36 +1,40 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, useContext, Show, Signal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
-import { api } from "../index.tsx";
+import { AuthContext } from "../index.tsx"; 
 
 const LoginPage = () => {
-    const [email, setEmail] = createSignal("");
-    const [password, setPassword] = createSignal("");
+    let email = "";
+    let password = "";
+
+    const [loginLoading, setLoginLoading] = createSignal(false);
+    const [loginError, setLoginError] = createSignal("");
 
     const navigate = useNavigate();
 
-    const loginQuery = createQuery(() => ({
-        queryKey: ["Login"],
-        queryFn: async () => {
-            // Login user
-            await api.post("users/login", {
-                json: {
-                    email: email(),
-                    password: password()
-                },
-                credentials: "include"
-            });
-
-            // Navigate to home page
-            navigate("/home");
-
-            return null;
-        }
-    }));
+    const [_, setToken] = useContext(AuthContext) as Signal<string>;
 
     const loginUser = async (event: Event) => {
+        // Prevent refresh
         event.preventDefault();
-        loginQuery.refetch();
+
+        // Login user
+        setLoginLoading(true);
+        setLoginError("");
+
+        const response = await fetch("http://localhost:8080/api/v1/users/login", {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: `${email}\n${password}`,
+            credentials: "include"
+        });
+
+        if (response.ok) {
+            setToken(await response.text());
+            navigate("/home");
+        } else {
+            setLoginLoading(false);
+            setLoginError(await response.text());
+        }
     }
 
     return (
@@ -40,17 +44,17 @@ const LoginPage = () => {
                 <form onSubmit={loginUser} class="flex flex-col items-center">
                     <div class="flex flex-col m-4 text-xl">
                         <label for="email">Email</label>
-                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => setEmail(event.target.value)} required/>
+                        <input id="email" type="email" class="border-2 w-96 h-10" onChange={(event) => {email = event.target.value}} required/>
                     </div>
                     <div class="flex flex-col m-4 text-xl">
                         <label for="password">Password</label>
-                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => setPassword(event.target.value)} required/>
+                        <input id="password" type="password" class="border-2 w-96 h-10" onChange={(event) => {password = event.target.value}} required/>
                     </div>
-                    <button class="border-2 rounded px-10 py-2 mt-6 text-lg" disabled={loginQuery.isFetching}>Login</button>
+                    <button class="border-2 rounded px-10 py-2 mt-6 text-lg" disabled={loginLoading()}>Login</button>
                 </form>
-                <Show when={loginQuery.isError}>
+                <Show when={loginError() !== ""}>
                     <div class="flex justify-center items-center border-2 p-4 m-6 w-96 h-12">
-                        <p>{loginQuery.error!.message}</p>
+                        <p>{loginError()}</p>
                     </div>
                 </Show>
             </div>
