@@ -1,8 +1,6 @@
-import { lazy } from "solid-js";
+import { lazy, createContext, createSignal } from "solid-js";
 import { render } from "solid-js/web";
-import { Router } from "@solidjs/router";
-import { QueryClient, QueryClientProvider } from '@tanstack/solid-query'; 
-import ky from "ky";
+import { Router, Route } from "@solidjs/router";
 import "./index.css"
 
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -11,56 +9,27 @@ const HomePage = lazy(() => import("./pages/HomePage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
 const MusicPage = lazy(() => import("./pages/MusicPage"));
 
-const routes = [
-    {
-        path: "/register",
-        component: RegisterPage,
-    },
-    {
-        path: "/login",
-        component: LoginPage
-    },
-    {
-        path: "/home",
-        component: HomePage
-    },
-    {
-        path: "/library",
-        component: LibraryPage
-    },
-    {
-        path: "/library/:music_id",
-        component: MusicPage
-    }
-]
+export const AuthContext = createContext();
 
-const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            enabled: false,
-            retry: false
-        }
-    }
-});
+function AuthProvider(props: any) {
+    const [token, setToken] = createSignal("")
 
-export const api = ky.create({
-    prefixUrl: "http://localhost:8080/api/v1",
-    hooks: {
-        beforeError: [
-            async(error) => {
-                // Parse error message from response body
-                error.message = (await error.response.json() as { error: string }).error;
-                return error;
-            }
-        ]
-    }
-});
+    return (
+        <AuthContext.Provider value={[token, setToken]}>
+            {props.children}
+        </AuthContext.Provider>
+    )
+}
 
 render(
     () => (
-        <QueryClientProvider client={queryClient}>
-            <Router>{routes}</Router>
-        </QueryClientProvider>
+        <Router root={(props) => <AuthProvider>{props.children}</AuthProvider>}>
+            <Route path="/register" component={RegisterPage}/>
+            <Route path="/login" component={LoginPage}/>
+            <Route path="/home" component={HomePage}/>
+            <Route path="/library" component={LibraryPage}/>
+            <Route path="/library/:music_id" component={MusicPage}/>
+        </Router>  
     ),
     document.getElementById("root")!
 );

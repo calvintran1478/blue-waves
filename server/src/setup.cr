@@ -38,8 +38,7 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
         user_id UUID,
         CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
           ON DELETE CASCADE
-          ON UPDATE CASCADE,
-        UNIQUE(user_id, title)
+          ON UPDATE CASCADE
       );
     SQL
   )
