@@ -27,4 +27,16 @@ class Repositories::PlaylistRepository < Repositories::Repository
 
     playlist_id
   end
+
+  # Deletes a playlist from the user's collection. Returns whether the deletion
+  # was successful.
+  #
+  # ```
+  # playlist_repository.delete("user_id", "playlist_id") # => true if the user originally had a playlist with the given playlist id
+  # ```
+  def delete(user_id : String, playlist_id : String) : Bool
+    a = @db.exec "DELETE FROM playlists WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id
+
+    a.rows_affected != 0
+  end
 end

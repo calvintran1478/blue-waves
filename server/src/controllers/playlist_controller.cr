@@ -4,12 +4,16 @@ require "./controller"
 require "../schemas/playlist_schemas"
 require "../validators/playlist_validator"
 require "../repositories/playlist_repository"
+require "../utils/str"
 
 # Controller for handling requests made to the playlist resource
 struct Controllers::PlaylistController < Controllers::Controller
   include Validators::PlaylistValidator
 
+  PLAYLIST_ID_LENGTH = 22
+  PLAYLIST_ID_STRING_LENGTH = 35 # PLAYLIST_ID_LENGTH + 1 + String::HEADER_SIZE
   USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
+
   ADD_PLAYLIST_REQUEST_BUFFER_SIZE = 93 # MAX_PLAYLIST_NAME_LENGTH + 1 + String::HEADER_SIZE
 
   def initialize(@playlist_repository : Repositories::PlaylistRepository, @auth_middleware : Middleware::AuthMiddleware)
@@ -25,6 +29,12 @@ struct Controllers::PlaylistController < Controllers::Controller
     case {context.request.method, path}
     when {"POST", "".to_slice}
       add_playlist(context)
+    when {"DELETE", _}
+      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
+        delete_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
     else
       context.response.status = HTTP::Status::NOT_FOUND
     end
@@ -59,5 +69,33 @@ struct Controllers::PlaylistController < Controllers::Controller
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::CREATED
     context.response.output << playlist_id << '\n' << data.playlist_name
+  end
+
+  # Deletes a playlist from the user's collection
+  #
+  # Method: DELETE
+  # Path: /api/v1/users/playlist/{playlist_id}
+  def delete_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
+    # Get user
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    return if user_id.nil?
+
+    # Delete playlist
+    playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
+    playlist_removed = false
+    if playlist_id.size == PLAYLIST_ID_LENGTH
+      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+      playlist_removed = @playlist_repository.delete(user_id, playlist_id_str)
+    end
+
+    unless playlist_removed
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << "Playlist not found"
+      return
+    end
+
+    # Send success response
+    context.response.status = HTTP::Status::NO_CONTENT
   end
 end
