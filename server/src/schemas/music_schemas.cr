@@ -1,4 +1,3 @@
-require "json"
 
 module Schemas::MusicSchemas
   # Request body schema for POST requests sent to /api/v1/users/music

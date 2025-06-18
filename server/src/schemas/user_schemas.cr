@@ -1,4 +1,3 @@
-require "json"
 
 module Schemas::UserSchemas
   # Request body schema for POST requests sent to /api/v1/users
