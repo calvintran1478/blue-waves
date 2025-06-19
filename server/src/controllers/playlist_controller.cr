@@ -15,6 +15,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
 
   ADD_PLAYLIST_REQUEST_BUFFER_SIZE = 93 # MAX_PLAYLIST_NAME_LENGTH + 1 + String::HEADER_SIZE
+  UPDATE_PLAYLIST_REQUEST_BUFFER_SIZE = 93 # MAX_PLAYLIST_NAME_LENGTH + 1 + String::HEADER_SIZE
 
   def initialize(@playlist_repository : Repositories::PlaylistRepository, @auth_middleware : Middleware::AuthMiddleware)
     @prefix_length = "/api/v1/users/playlists".size
@@ -32,6 +33,12 @@ struct Controllers::PlaylistController < Controllers::Controller
     when {"GET", _}
       if path.size == 0
         get_playlists(context)
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
+    when {"PATCH", _}
+      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
+        update_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -91,6 +98,46 @@ struct Controllers::PlaylistController < Controllers::Controller
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
     @playlist_repository.list(user_id, context)
+  end
+
+  # Updates the name of a playlist in the user's collection
+  #
+  # Method: PATCH
+  # Path: /api/v1/users/playlists/{playlist_id}
+  def update_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
+    # Get user
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    return if user_id.nil?
+
+    # Validate user input
+    update_playlist_request_buffer = uninitialized UInt8[UPDATE_PLAYLIST_REQUEST_BUFFER_SIZE]
+    data = validate_update_playlist_request(context, update_playlist_request_buffer.to_unsafe)
+    return if data.nil?
+
+    # Update playlist
+    playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
+    playlist_updated = false
+    if playlist_id.size == PLAYLIST_ID_LENGTH
+      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+
+      if @playlist_repository.exists_by_name_excluding_id(user_id, data.playlist_name, playlist_id_str)
+        context.response.status = HTTP::Status::CONFLICT
+        context.response.output << "Playlist with the given name already exists"
+        return
+      end
+
+      playlist_updated = @playlist_repository.update(user_id, playlist_id_str, data.playlist_name)
+    end
+
+    unless playlist_updated
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << "Playlist not found"
+      return
+    end
+
+    # Send success responses
+    context.response.status = HTTP::Status::NO_CONTENT
   end
 
   # Deletes a playlist from the user's collection

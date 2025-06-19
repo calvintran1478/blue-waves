@@ -16,6 +16,16 @@ class Repositories::PlaylistRepository < Repositories::Repository
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2)", user_id, playlist_name, as: Bool
   end
 
+  # Returns whether a playlist with the given name exists in the user's collection
+  # (excluding the playlist with the given playlist id)
+  #
+  # ```
+  # playlist_repository.exists_by_name_excluding_id("user_id", "playlist_name", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_name" in their collection (excluding the chosen playlist id)
+  # ```
+  def exists_by_name_excluding_id(user_id : String, playlist_name : String, excluded_playlist_id : String)
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2 AND playlist_id<>$3)", user_id, playlist_name, excluded_playlist_id, as: Bool
+  end
+
   # Adds a playlist to the user's collection
   #
   # ```
@@ -52,6 +62,17 @@ class Repositories::PlaylistRepository < Repositories::Repository
       end
     end
     context.response.output << "]"
+  end
+
+  # Updates the name of a playlist in the user's collection.
+  #
+  # ```
+  # playlist_repository.update("user_id", "playlist_id", "playlist_name") # => true if update was successful
+  # ```
+  def update(user_id : String, playlist_id : String, playlist_name : String) : Bool
+    result = @db.exec "UPDATE playlists SET name=$3 WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id, playlist_name
+
+    result.rows_affected != 0
   end
 
   # Deletes a playlist from the user's collection. Returns whether the deletion
