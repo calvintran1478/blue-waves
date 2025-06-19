@@ -49,6 +49,7 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
       CREATE TABLE IF NOT EXISTS playlists (
         playlist_id VARCHAR PRIMARY KEY,
         name VARCHAR UNIQUE,
+        creation_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         user_id UUID,
         CONSTRAINT playlists_user_id_fkey FOREIGN KEY(user_id) REFERENCES users(user_id)
           ON DELETE CASCADE

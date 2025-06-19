@@ -29,6 +29,12 @@ struct Controllers::PlaylistController < Controllers::Controller
     case {context.request.method, path}
     when {"POST", "".to_slice}
       add_playlist(context)
+    when {"GET", _}
+      if path.size == 0
+        get_playlists(context)
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+      end
     when {"DELETE", _}
       if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
         delete_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
@@ -69,6 +75,22 @@ struct Controllers::PlaylistController < Controllers::Controller
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::CREATED
     context.response.output << playlist_id << '\n' << data.playlist_name
+  end
+
+  # Retreives the playlist id and name for each playlist in the user's collection
+  #
+  # Method: GET
+  # Path: /api/v1/users/music
+  def get_playlists(context : HTTP::Server::Context) : Nil
+    # Get user
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    return if user_id.nil?
+
+    # Send music data
+    context.response.content_type = "application/json"
+    context.response.status = HTTP::Status::OK
+    @playlist_repository.list(user_id, context)
   end
 
   # Deletes a playlist from the user's collection

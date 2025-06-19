@@ -28,6 +28,32 @@ class Repositories::PlaylistRepository < Repositories::Repository
     playlist_id
   end
 
+  # Lists metadata from playlists in the user's collection and writes contents
+  # to the context response body as JSON
+  #
+  # ```
+  # playlist_repository.list("user_id", context)
+  # ```
+  def list(user_id : String, context : HTTP::Server::Context) : Nil
+    initialized = false
+    context.response.output << "["
+    @db.query("SELECT playlist_id, name FROM playlists WHERE user_id=$1 ORDER BY creation_time", user_id) do |rs|
+      rs.each do
+        playlist_id, playlist_name = rs.read(String, String)
+        if initialized
+          context.response.output << ","
+        else
+          initialized = true
+        end
+        context.response.output << "{"
+        context.response.output << "\"playlist_id\":\"" << playlist_id << "\","
+        context.response.output << "\"name\":\"" << playlist_name << "\","
+        context.response.output << "}"
+      end
+    end
+    context.response.output << "]"
+  end
+
   # Deletes a playlist from the user's collection. Returns whether the deletion
   # was successful.
   #
