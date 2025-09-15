@@ -87,7 +87,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Retreives the playlist id and name for each playlist in the user's collection
   #
   # Method: GET
-  # Path: /api/v1/users/music
+  # Path: /api/v1/users/playlists
   def get_playlists(context : HTTP::Server::Context) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
