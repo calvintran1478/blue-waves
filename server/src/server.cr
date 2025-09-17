@@ -52,7 +52,7 @@ playlist_repository = Repositories::PlaylistRepository.new(db)
 # Initialize resource controllers
 user_controller = Controllers::UserController.new(user_repository, auth_db, rate_limit_middleware)
 music_controller = Controllers::MusicController.new(music_repository, auth_middleware, rate_limit_middleware)
-playlist_controller = Controllers::PlaylistController.new(playlist_repository, auth_middleware)
+playlist_controller = Controllers::PlaylistController.new(playlist_repository, music_repository, auth_middleware)
 
 # Define server handling of requests
 server = HTTP::Server.new do |context|

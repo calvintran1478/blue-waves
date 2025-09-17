@@ -3,6 +3,7 @@ module Validators::PlaylistValidator
   include Schemas::PlaylistSchemas
 
   MAX_PLAYLIST_NAME_LENGTH = 80
+  MUSIC_ID_LENGTH = 22
 
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
     curr_buffer = Bytes.new(buffer, limit)
@@ -48,6 +49,31 @@ module Validators::PlaylistValidator
     end
 
     AddPlaylistRequest.new(playlist_name)
+  end
+
+  def validate_add_playlist_music_request(context : HTTP::Server::Context, add_playlist_music_request_buffer : UInt8*) : (AddPlaylistMusicRequest | Nil)
+    # Get request body
+    if context.request.body.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+    request_body = context.request.body.as(IO)
+
+    # Read music id bytes
+    music_id_buffer = add_playlist_music_request_buffer.as(String).to_unsafe
+    music_id_bytesize = read_io_to_buffer(request_body, music_id_buffer, MUSIC_ID_LENGTH + 1).to_i32
+    if music_id_bytesize != MUSIC_ID_LENGTH
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << "Music not found"
+      return
+    end
+
+    # Initialize music id string
+    music_id_buffer[music_id_bytesize] = 0_u8
+    music_id = add_playlist_music_request_buffer.as(String)
+    music_id.initialize_header(music_id_bytesize, music_id_bytesize)
+
+    AddPlaylistMusicRequest.new(music_id)
   end
 
   def validate_update_playlist_request(context : HTTP::Server::Context, update_playlist_request_buffer : UInt8*) : (UpdatePlaylistRequest | Nil)

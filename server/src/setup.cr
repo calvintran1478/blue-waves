@@ -58,4 +58,27 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
       );
     SQL
   )
+
+  # Create playlist music table
+  db.exec(
+    <<-SQL
+      CREATE TABLE IF NOT EXISTS playlist_music (
+        playlist_id VARCHAR,
+        music_id VARCHAR,
+        music_number INTEGER NOT NULL,
+        user_id UUID,
+        CONSTRAINT playlist_music_user_id_fkey FOREIGN KEY(user_id) REFERENCES users(user_id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE,
+        CONSTRAINT playlist_music_playlist_id_fkey FOREIGN KEY(playlist_id) REFERENCES playlists(playlist_id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE,
+        CONSTRAINT playlist_music_music_id_fkey FOREIGN KEY(music_id) REFERENCES music(music_id)
+          ON DELETE CASCADE
+          ON UPDATE CASCADE,
+        PRIMARY KEY (playlist_id, music_id),
+        UNIQUE (playlist_id, music_number)
+      );
+    SQL
+  )
 end

@@ -7,6 +7,15 @@ require "./repository"
 # playlist table should be made though a PlaylistRepository object.
 class Repositories::PlaylistRepository < Repositories::Repository
 
+  # Returns whether a playlist with the given id exists in the user's collection
+  #
+  # ```
+  # playlist_repository.exists_by_id("user_id", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_id" in their collection
+  # ```
+  def exists_by_id(user_id : String, playlist_id : String) : Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND playlist_id=$2)", user_id, playlist_id, as: Bool
+  end
+
   # Returns whether a playlist with the given name exists in the user's collection
   #
   # ```
@@ -14,6 +23,24 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   def exists_by_name(user_id : String, playlist_name : String) : Bool
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2)", user_id, playlist_name, as: Bool
+  end
+
+  # Returns whether the given music file exists in the user's playlist
+  #
+  # ```
+  # playlist_repository.contains_music_id("user_id", "playlist_id", "music_id") # => true if user with "user_id" has a playlist with "playlist_id" in their collection and it contains "music_id"
+  # ```
+  def contains_music_id(user_id : String, playlist_id : String, music_id : String) : Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3)", user_id, playlist_id, music_id, as: Bool
+  end
+
+  # Adds a music track to a playlist in the user's collection
+  #
+  # ```
+  # playlist_repository.add_music("user_id", "playlist_name", "music_id")
+  # ```
+  def add_music(user_id : String, playlist_id : String, music_id : String) : Nil
+    @db.exec "INSERT INTO playlist_music (user_id, playlist_id, music_id, music_number) VALUES ($1, $2, $3, (SELECT COUNT(*) FROM playlist_music WHERE user_id=$4 AND playlist_id=$5) + 1)", user_id, playlist_id, music_id, user_id, playlist_id
   end
 
   # Returns whether a playlist with the given name exists in the user's collection
