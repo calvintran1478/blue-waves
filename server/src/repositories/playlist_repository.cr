@@ -113,4 +113,26 @@ class Repositories::PlaylistRepository < Repositories::Repository
 
     result.rows_affected != 0
   end
+
+  # Removes a music track from a playlist in the user's collection. Returns
+  # whether the removal was successful
+  #
+  # ```
+  # playlist_repository.remove_music("user_id", "playlist_id", "music_id") # => true if the user originally had "music_id" in their playlist with the given playlist id
+  # ```
+  def remove_music(user_id : String, playlist_id : String, music_id : String) : Bool
+    music_number = nil
+    @db.query("SELECT music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id) do |rs|
+      rs.each do
+        music_number = rs.read(Int32)
+      end
+    end
+    return false if music_number.nil?
+
+    result = @db.exec "DELETE FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id
+
+    @db.exec "UPDATE playlist_music SET music_number = music_number - 1 WHERE user_id=$1 AND playlist_id=$2 AND music_number > $3", user_id, playlist_id, music_number
+
+    true
+  end
 end

@@ -13,6 +13,8 @@ struct Controllers::PlaylistController < Controllers::Controller
 
   PLAYLIST_ID_LENGTH = 22
   PLAYLIST_ID_STRING_LENGTH = 35 # PLAYLIST_ID_LENGTH + 1 + String::HEADER_SIZE
+  MUSIC_ID_LENGTH = 22
+  MUSIC_ID_STRING_LENGTH = 35 # PLAYLIST_ID_LENGTH + 1 + String::HEADER_SIZE
   USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
 
   ADD_PLAYLIST_REQUEST_BUFFER_SIZE = 93 # MAX_PLAYLIST_NAME_LENGTH + 1 + String::HEADER_SIZE
@@ -59,7 +61,21 @@ struct Controllers::PlaylistController < Controllers::Controller
       end
     when {"DELETE", _}
       if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
-        delete_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+        sub_path_ptr = path.to_unsafe + 1
+        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1).as(UInt8*)
+
+        if slash_ptr.null?
+          delete_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+        elsif slash_ptr.memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
+          playlist_id = Bytes.new(sub_path_ptr, slash_ptr - sub_path_ptr)
+
+          slash_ptr += "/music/".bytesize
+          music_id = Bytes.new(slash_ptr, path.size - 1 - playlist_id.size - "/music/".bytesize)
+
+          delete_playlist_music(context, playlist_id, music_id)
+        else
+          context.response.status = HTTP::Status::NOT_FOUND
+        end
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -227,6 +243,36 @@ struct Controllers::PlaylistController < Controllers::Controller
     unless playlist_removed
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
+      return
+    end
+
+    # Send success response
+    context.response.status = HTTP::Status::NO_CONTENT
+  end
+
+  # Deletes a music track from one of the user's playlists
+  #
+  # Method: DELETE
+  # Path: /api/v1/users/playlist/{playlist_id}/music/{music_id}
+  def delete_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes, music_id : Bytes) : Nil
+    # Get user
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    return if user_id.nil?
+
+    # Remove music track
+    playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
+    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
+    music_removed = false
+    if playlist_id.size == PLAYLIST_ID_LENGTH && music_id.size == MUSIC_ID_LENGTH
+      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+      music_removed = @playlist_repository.remove_music(user_id, playlist_id_str, music_id_str)
+    end
+
+    unless music_removed
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << "Music not found"
       return
     end
 
