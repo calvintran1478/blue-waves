@@ -91,6 +91,25 @@ class Repositories::PlaylistRepository < Repositories::Repository
     context.response.output << "]"
   end
 
+  # Lists music tracks in the user's playlist
+  #
+  # ```
+  # playlist_repository.list_music("user_id", "playlist_id")
+  # ```
+  def list_music(user_id : String, playlist_id : String, context : HTTP::Server::Context) : Nil
+    initialized = false
+    @db.query("SELECT music_id FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
+      rs.each do
+        if initialized
+          context.response.output << '\n'
+        else
+          initialized = true
+        end
+        context.response.output << rs.read(String)
+      end
+    end
+  end
+
   # Updates the name of a playlist in the user's collection.
   #
   # ```

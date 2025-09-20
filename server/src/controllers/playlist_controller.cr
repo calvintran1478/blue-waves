@@ -50,6 +50,15 @@ struct Controllers::PlaylistController < Controllers::Controller
     when {"GET", _}
       if path.size == 0
         get_playlists(context)
+      elsif path.size > 1 && path.unsafe_fetch(0) == '/'.ord
+        sub_path_ptr = path.to_unsafe + 1
+        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1)
+
+        if !slash_ptr.null? && context.request.resource.ends_with?("music")
+          get_playlist_music(context, Bytes.new(sub_path_ptr, slash_ptr.as(UInt8*) - sub_path_ptr))
+        else
+          context.response.status = HTTP::Status::NOT_FOUND
+        end
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -180,6 +189,36 @@ struct Controllers::PlaylistController < Controllers::Controller
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
     @playlist_repository.list(user_id, context)
+  end
+
+  # Retreives the music ids for each music track in a user's playlist
+  #
+  # Method: GET
+  # Path: /api/v1/users/playlists/{playlist_id}/music
+  def get_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
+    # Get user
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    return if user_id.nil?
+
+    # Check if playlist exists
+    playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
+    playlist_id_str, playlist_exists = "", false
+    if playlist_id.size == PLAYLIST_ID_LENGTH
+      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+      playlist_exists = @playlist_repository.exists_by_id(user_id, playlist_id_str)
+    end
+
+    unless playlist_exists
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << "Playlist not found"
+      return
+    end
+
+    # Send music data
+    context.response.content_type = "text\plain"
+    context.response.status = HTTP::Status::OK
+    @playlist_repository.list_music(user_id, playlist_id_str, context)
   end
 
   # Updates the name of a playlist in the user's collection
