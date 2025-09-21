@@ -64,7 +64,21 @@ struct Controllers::PlaylistController < Controllers::Controller
       end
     when {"PATCH", _}
       if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
-        update_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+        sub_path_ptr = path.to_unsafe + 1
+        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1).as(UInt8*)
+
+        if slash_ptr.null?
+          update_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+        elsif slash_ptr.memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
+          playlist_id = Bytes.new(sub_path_ptr, slash_ptr - sub_path_ptr)
+
+          slash_ptr += "/music/".bytesize
+          music_id = Bytes.new(slash_ptr, path.size - 1 - playlist_id.size - "/music/".bytesize)
+
+          update_playlist_music(context, playlist_id, music_id)
+        else
+          context.response.status = HTTP::Status::NOT_FOUND
+        end
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -258,6 +272,40 @@ struct Controllers::PlaylistController < Controllers::Controller
     end
 
     # Send success responses
+    context.response.status = HTTP::Status::NO_CONTENT
+  end
+
+  # Updates the position of a music track in a user's playlist
+  #
+  # Method : PATCH
+  # Path: /api/v1/users/playlists/{playlist_id}/music/{music_id}
+  def update_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes, music_id : Bytes) : Nil
+    # Get user
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    return if user_id.nil?
+
+    # Validate user input
+    data = validate_update_playlist_music_request(context)
+    return if data.nil?
+
+    # Update music track
+    playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
+    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
+    music_updated_error = "Music not found within playlist"
+    if playlist_id.size == PLAYLIST_ID_LENGTH && music_id.size == MUSIC_ID_LENGTH
+      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+      music_updated_error = @playlist_repository.update_music(user_id, playlist_id_str, music_id_str, data.music_number)
+    end
+
+    unless music_updated_error.nil?
+      context.response.status = HTTP::Status::NOT_FOUND
+      context.response.output << music_updated_error
+      return
+    end
+
+    # Send success response
     context.response.status = HTTP::Status::NO_CONTENT
   end
 

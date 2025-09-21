@@ -107,4 +107,25 @@ module Validators::PlaylistValidator
 
     UpdatePlaylistRequest.new(playlist_name)
   end
+
+  def validate_update_playlist_music_request(context : HTTP::Server::Context) : (UpdatePlaylistMusicRequest | Nil)
+    # Get request body
+    if context.request.body.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+    request_body = context.request.body.as(IO)
+
+    # Decode request body as an integer
+    music_number = IO::ByteFormat::NetworkEndian.decode(Int32, request_body) rescue nil
+
+    # Check if the provided music number is valid
+    if music_number.nil? || music_number <= 0
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Music number must be a positive integer"
+      return
+    end
+
+    UpdatePlaylistMusicRequest.new(music_number)
+  end
 end

@@ -76,8 +76,7 @@ DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME
         CONSTRAINT playlist_music_music_id_fkey FOREIGN KEY(music_id) REFERENCES music(music_id)
           ON DELETE CASCADE
           ON UPDATE CASCADE,
-        PRIMARY KEY (playlist_id, music_id),
-        UNIQUE (playlist_id, music_number)
+        PRIMARY KEY (playlist_id, music_id)
       );
     SQL
   )

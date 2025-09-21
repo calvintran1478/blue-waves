@@ -30,4 +30,15 @@ module Schemas::PlaylistSchemas
     def initialize(@playlist_name : String)
     end
   end
+
+  # Request body schema for UPDATE requests sent to /api/v1/users/playlists/{playlist_id}/music/{music_id}
+  #
+  # music number is expected to be positive
+  struct UpdatePlaylistMusicRequest
+
+    getter music_number : Int32
+
+    def initialize(@music_number : Int32)
+    end
+  end
 end
