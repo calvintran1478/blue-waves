@@ -34,6 +34,7 @@ const HomePage = () => {
         <div class="flex">
             <div class="flex flex-col w-1/5 h-screen border-2">
                 <nav class="flex flex-col items-center p-6">
+                    <A href="/home" class="text-2xl font-medium m-6">Home</A>
                     <A href="/library" class="text-2xl font-medium m-6">Library</A>
                     <A href="/playlists" class="text-2xl font-medium m-6">Playlists</A>
                 </nav>

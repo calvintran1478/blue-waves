@@ -109,10 +109,17 @@ const LibraryPage = () => {
     }
 
     return (
-        <div>
-            <div>
-                <h1 class="text-2xl font-semibold my-4">Your Library</h1>
-                <button class="rounded border-2 my-2" onClick={() => setShowAddMusicModal(true)}>Add Music</button>
+        <div class="flex">
+            <div class="flex flex-col w-1/5 h-screen border-2">
+                <nav class="flex flex-col items-center p-6">
+                    <A href="/home" class="text-2xl font-medium m-6">Home</A>
+                    <A href="/library" class="text-2xl font-medium m-6">Library</A>
+                    <A href="/playlists" class="text-2xl font-medium m-6">Playlists</A>
+                </nav>
+            </div>
+            <div class="flex flex-col w-4/5">
+                <h1 class="text-3xl font-semibold mt-16 mb-4">Your Library</h1>
+                <button class="rounded w-24 h-10 border-2 my-2" onClick={() => setShowAddMusicModal(true)}>Add Music</button>
                 <hr class="border my-2" />
                 <Suspense>
                     <For each={musicEntries()}>
