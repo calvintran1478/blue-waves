@@ -84,7 +84,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
         end
         context.response.output << "{"
         context.response.output << "\"playlist_id\":\"" << playlist_id << "\","
-        context.response.output << "\"name\":\"" << playlist_name << "\","
+        context.response.output << "\"name\":\"" << playlist_name << "\""
         context.response.output << "}"
       end
     end
