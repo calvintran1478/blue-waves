@@ -1,11 +1,14 @@
-import { useContext, Signal, createResource, For, Suspense } from "solid-js";
+import { useContext, Signal, createResource, For, Show, Suspense, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { getToken } from "../utils/token"; 
 import { AuthContext } from "..";
+import AddPlaylistModal from "../components/AddPlaylistModal"; 
 
 const PlaylistPage = () => {
 
-  const [token, setToken] = useContext(AuthContext) as Signal<string>;
+    const [showAddPlaylistModal, setShowAddPlaylistModal] = createSignal(false);
+    
+    const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const fetchPlaylists = async () => {
         // Fetch new token if user refreshed the page
@@ -24,7 +27,7 @@ const PlaylistPage = () => {
         }
     }
 
-    const [playlists] = createResource(fetchPlaylists);
+    const [playlists, modifyPlaylists] = createResource(fetchPlaylists);
 
     return (
         <div class="flex">
@@ -37,7 +40,7 @@ const PlaylistPage = () => {
             </div>
             <div class="flex flex-col w-4/5">
                 <h1 class="text-3xl font-semibold mt-16 mb-4">Your Playlists</h1>
-                <button class="rounded w-28 h-10 border-2 my-2">Add Playlist</button>
+                <button class="rounded w-28 h-10 border-2 my-2" onClick={() => setShowAddPlaylistModal(true)}>Add Playlist</button>
                 <hr class="border my-2"/>
                 <Suspense>
                     <For each={playlists()}>
@@ -53,6 +56,11 @@ const PlaylistPage = () => {
                     </For>
                 </Suspense>
             </div>
+            <Show when={showAddPlaylistModal()}>
+                <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
+                    <AddPlaylistModal closeCallback={() => setShowAddPlaylistModal(false)} playlists={playlists} setPlaylists={modifyPlaylists.mutate}/>
+                </div>
+            </Show>
         </div>
     )
 }

@@ -120,7 +120,7 @@ const LibraryPage = () => {
             <div class="flex flex-col w-4/5">
                 <h1 class="text-3xl font-semibold mt-16 mb-4">Your Library</h1>
                 <button class="rounded w-24 h-10 border-2 my-2" onClick={() => setShowAddMusicModal(true)}>Add Music</button>
-                <hr class="border my-2" />
+                <hr class="border my-2"/>
                 <Suspense>
                     <For each={musicEntries()}>
                         {(musicEntry) => (
