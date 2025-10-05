@@ -13,7 +13,9 @@ interface MusicEntry {
 }
 
 const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter<string>, closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>, coverArtUrl: Accessor<string>, fetchCoverArtLoading: Accessor<boolean>}) => {
-    const musicEntry = props.musicEntries()!.find((musicEntry) => musicEntry["music_id"] === props.musicId())!
+    const musicEntryIndex = props.musicEntries()!.findIndex((musicEntry) => musicEntry["music_id"] === props.musicId());
+    const musicEntry = props.musicEntries()![musicEntryIndex];
+
     const [setCoverArtLoading, setSetCoverArtLoading] = createSignal(false);
     const [deleteMusicLoading, setDeleteMusicLoading] = createSignal(false);
 
@@ -45,8 +47,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         if (response.ok) {
             // Update music entry
             const newMusicEntries = [...props.musicEntries()!];
-            const updateIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
-            newMusicEntries[updateIndex] = {"music_id": props.musicId(), "title": title, "artist": artist};
+            newMusicEntries[musicEntryIndex] = {"music_id": props.musicId(), "title": title, "artist": artist};
             props.setMusicEntries(newMusicEntries);
         } else if (response.status === 401) {
             setToken(await getToken());
@@ -66,8 +67,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         if (response.ok) {
             // Delete music entry
             const newMusicEntries = [...props.musicEntries()!];
-            const deleteIndex = newMusicEntries.findIndex((entry) => entry["music_id"] === props.musicId());
-            newMusicEntries.splice(deleteIndex, 1);
+            newMusicEntries.splice(musicEntryIndex, 1);
             props.setMusicEntries(newMusicEntries);
 
             // Delete cache entry
