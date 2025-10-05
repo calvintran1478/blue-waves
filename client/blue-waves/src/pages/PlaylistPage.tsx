@@ -3,11 +3,15 @@ import { A } from "@solidjs/router";
 import { getToken } from "../utils/token"; 
 import { AuthContext } from "..";
 import AddPlaylistModal from "../components/AddPlaylistModal"; 
+import UpdatePlaylistModal from "../components/UpdatePlaylistModal";
 
 const PlaylistPage = () => {
 
     const [showAddPlaylistModal, setShowAddPlaylistModal] = createSignal(false);
-    
+    const [showUpdatePlaylistModal, setShowUpdatePlaylistModal] = createSignal(false);
+
+    let selectedPlaylistId = "";
+
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const fetchPlaylists = async () => {
@@ -51,6 +55,7 @@ const PlaylistPage = () => {
                                             <h2 class="text-xl font-semibold">{playlist["name"]}</h2>
                                         </div>
                                     </A>
+                                    <button class="rounded w-10 h-7 border-2 m-4" onMouseOver={() => {selectedPlaylistId = playlist["playlist_id"]}} onClick={() => setShowUpdatePlaylistModal(true)}>...</button>
                             </div>
                         )}
                     </For>
@@ -59,6 +64,11 @@ const PlaylistPage = () => {
             <Show when={showAddPlaylistModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
                     <AddPlaylistModal closeCallback={() => setShowAddPlaylistModal(false)} playlists={playlists} setPlaylists={modifyPlaylists.mutate}/>
+                </div>
+            </Show>
+            <Show when={showUpdatePlaylistModal()}>
+                <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
+                    <UpdatePlaylistModal playlistId={selectedPlaylistId} closeCallback={() => setShowUpdatePlaylistModal(false)} playlists={playlists} setPlaylists={modifyPlaylists.mutate}/>
                 </div>
             </Show>
         </div>
