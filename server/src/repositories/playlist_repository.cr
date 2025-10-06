@@ -98,16 +98,23 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   def list_music(user_id : String, playlist_id : String, context : HTTP::Server::Context) : Nil
     initialized = false
-    @db.query("SELECT music_id FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
+    context.response.output << "["
+    @db.query("SELECT m.music_id, m.title, m.artist FROM music m INNER JOIN playlist_music pm ON m.music_id = pm.music_id WHERE pm.user_id=$1 AND pm.playlist_id=$2 ORDER BY pm.music_number", user_id, playlist_id) do |rs|
       rs.each do
+        music_id, title, artist = rs.read(String, String, String)
         if initialized
-          context.response.output << '\n'
+          context.response.output << ","
         else
           initialized = true
         end
-        context.response.output << rs.read(String)
+        context.response.output << "{"
+        context.response.output << "\"music_id\":\"" << music_id << "\","
+        context.response.output << "\"title\":\"" << title << "\","
+        context.response.output << "\"artist\":\"" << artist << "\""
+        context.response.output << "}"
       end
     end
+    context.response.output << "]"
   end
 
   # Updates the name of a playlist in the user's collection.
