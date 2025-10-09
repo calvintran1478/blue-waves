@@ -91,14 +91,30 @@ class Repositories::PlaylistRepository < Repositories::Repository
     context.response.output << "]"
   end
 
-  # Lists music tracks in the user's playlist
+  # Gets the name of a playlist in the user's collection along with all music
+  # tracks in that playlist. The playlist is selected by playlist id and the
+  # contents are written to the context body as JSON. Returns whether a playlist
+  # with the given id was successfully found
   #
   # ```
-  # playlist_repository.list_music("user_id", "playlist_id")
+  # playlist_repository.get("user_id", "playlist_id", context) # => true if the playlist exists
   # ```
-  def list_music(user_id : String, playlist_id : String, context : HTTP::Server::Context) : Nil
+  def get(user_id : String, playlist_id : String, context : HTTP::Server::Context) : Bool
+    # Get playlist name
+    name = nil
+    @db.query("SELECT name FROM playlists WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id) do |rs|
+      rs.each do
+        name = rs.read(String)
+      end
+    end
+    return false if name.nil?
+    context.response.content_type = "application/json"
+    context.response.status = HTTP::Status::OK
+    context.response.output << "{\"name\":\"" << name << "\","
+
+    # Get playlist music tracks
     initialized = false
-    context.response.output << "["
+    context.response.output << "\"music\":["
     @db.query("SELECT m.music_id, m.title, m.artist FROM music m INNER JOIN playlist_music pm ON m.music_id = pm.music_id WHERE pm.user_id=$1 AND pm.playlist_id=$2 ORDER BY pm.music_number", user_id, playlist_id) do |rs|
       rs.each do
         music_id, title, artist = rs.read(String, String, String)
@@ -114,7 +130,9 @@ class Repositories::PlaylistRepository < Repositories::Repository
         context.response.output << "}"
       end
     end
-    context.response.output << "]"
+    context.response.output << "]}"
+
+    true
   end
 
   # Updates the name of a playlist in the user's collection.
