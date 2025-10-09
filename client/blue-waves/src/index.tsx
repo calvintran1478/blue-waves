@@ -8,7 +8,8 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
 const MusicPage = lazy(() => import("./pages/MusicPage"));
-const PlaylistPage = lazy(() => import("./pages/PlaylistPage"))
+const PlaylistsPage = lazy(() => import("./pages/PlaylistsPage"));
+const PlaylistPage = lazy(() => import("./pages/PlaylistPage"));
 
 export const AuthContext = createContext();
 
@@ -30,7 +31,8 @@ render(
             <Route path="/home" component={HomePage}/>
             <Route path="/library" component={LibraryPage}/>
             <Route path="/library/:music_id" component={MusicPage}/>
-            <Route path="/playlists" component={PlaylistPage}/>
+            <Route path="/playlists" component={PlaylistsPage}/>
+            <Route path="/playlists/:playlist_id" component={PlaylistPage}/>
         </Router>  
     ),
     document.getElementById("root")!

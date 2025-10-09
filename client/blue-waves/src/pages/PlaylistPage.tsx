@@ -1,37 +1,37 @@
-import { useContext, Signal, createResource, For, Show, Suspense, createSignal } from "solid-js";
+import { createResource, useContext, createSignal, For, Signal, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
+import { useParams } from "@solidjs/router";
 import { getToken } from "../utils/token"; 
 import { AuthContext } from "..";
-import AddPlaylistModal from "../components/AddPlaylistModal"; 
-import UpdatePlaylistModal from "../components/UpdatePlaylistModal";
 
 const PlaylistPage = () => {
-
-    const [showAddPlaylistModal, setShowAddPlaylistModal] = createSignal(false);
-    const [showUpdatePlaylistModal, setShowUpdatePlaylistModal] = createSignal(false);
-
-    let selectedPlaylistId = "";
+    const params = useParams();
+    const playlistId = params.playlist_id;
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
-    const fetchPlaylists = async () => {
+    const [playlistName, setPlaylistName] = createSignal("");
+
+    const fetchPlaylist = async () => {
         // Fetch new token if user refreshed the page
         if (token() === "") setToken(await getToken());
 
-        // Get playlists
-        const response = await fetch("http://localhost:8080/api/v1/users/playlists", {
+        // Get playlist music
+        const response = await fetch(`http://localhost:8080/api/v1/users/playlists/${playlistId}`, {
             headers: { "Authorization": `Bearer ${token()}` }
         });
 
         if (response.ok) {
-            return await response.json();
+            const body = await response.json();
+            setPlaylistName(body["name"]);
+            return body["music"];
         } else if (response.status === 401) {
             setToken(await getToken());
-            return await fetchPlaylists();
+            return await fetchPlaylist();
         }
     }
 
-    const [playlists, modifyPlaylists] = createResource(fetchPlaylists);
+    const [playlistMusic] = createResource(fetchPlaylist);
 
     return (
         <div class="flex">
@@ -43,34 +43,23 @@ const PlaylistPage = () => {
                 </nav>
             </div>
             <div class="flex flex-col w-4/5">
-                <h1 class="text-3xl font-semibold mt-16 mb-4">Your Playlists</h1>
-                <button class="rounded w-28 h-10 border-2 my-2" onClick={() => setShowAddPlaylistModal(true)}>Add Playlist</button>
-                <hr class="border my-2"/>
                 <Suspense>
-                    <For each={playlists()}>
-                        {(playlist) => (
+                    <h1 class="text-3xl font-semibold mt-16 mb-4">{playlistName()}</h1>
+                    <hr class="border my-2"/>
+                    <For each={playlistMusic()}>
+                        {(musicEntry) => (
                             <div class="flex justify-between items-center h-16 w-auto my-2 border-2">
-                                    <A href="">
-                                        <div>
-                                            <h2 class="text-xl font-semibold">{playlist["name"]}</h2>
-                                        </div>
-                                    </A>
-                                    <button class="rounded w-10 h-7 border-2 m-4" onMouseOver={() => {selectedPlaylistId = playlist["playlist_id"]}} onClick={() => setShowUpdatePlaylistModal(true)}>...</button>
+                                <A href={musicEntry["music_id"]}>
+                                    <div>
+                                        <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
+                                        <h3 class="text-lg">{musicEntry["artist"]}</h3>
+                                    </div>
+                                </A>
                             </div>
                         )}
                     </For>
                 </Suspense>
             </div>
-            <Show when={showAddPlaylistModal()}>
-                <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <AddPlaylistModal closeCallback={() => setShowAddPlaylistModal(false)} playlists={playlists} setPlaylists={modifyPlaylists.mutate}/>
-                </div>
-            </Show>
-            <Show when={showUpdatePlaylistModal()}>
-                <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <UpdatePlaylistModal playlistId={selectedPlaylistId} closeCallback={() => setShowUpdatePlaylistModal(false)} playlists={playlists} setPlaylists={modifyPlaylists.mutate}/>
-                </div>
-            </Show>
         </div>
     )
 }
