@@ -68,7 +68,7 @@ struct Controllers::PlaylistController < Controllers::Controller
         slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1).as(UInt8*)
 
         if slash_ptr.null?
-          update_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+          update_playlist(context, Bytes.new(sub_path_ptr, path.size - 1))
         elsif slash_ptr.memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
           playlist_id = Bytes.new(sub_path_ptr, slash_ptr - sub_path_ptr)
 
@@ -88,7 +88,7 @@ struct Controllers::PlaylistController < Controllers::Controller
         slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1).as(UInt8*)
 
         if slash_ptr.null?
-          delete_playlist(context, Bytes.new(path.to_unsafe + 1, path.size - 1))
+          delete_playlist(context, Bytes.new(sub_path_ptr, path.size - 1))
         elsif slash_ptr.memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
           playlist_id = Bytes.new(sub_path_ptr, slash_ptr - sub_path_ptr)
 
