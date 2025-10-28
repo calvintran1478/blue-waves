@@ -21,6 +21,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
 
     const musicId = () => props.musicList[props.musicIndex()!]["music_id"] // Derived signal
     const musicTitle = () => props.musicList[props.musicIndex()!]["title"] // Derived signal
+    const musicArtist = () => props.musicList[props.musicIndex()!]["artist"] // Derived signal
 
     let audioPlayer!: HTMLAudioElement;
 
@@ -157,7 +158,10 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
         <div class="flex fixed bottom-0 w-screen h-20 border justify-between items-center bg-gray-100">
             <div class="flex items-center ml-4">
                 <img class="w-16 h-16 rounded" src={coverArtFile()}/>
-                <p class="ml-4">{musicTitle()}</p>
+                <div class="ml-4">
+                    <p class="font-semibold">{musicTitle()}</p>
+                    <p>{musicArtist()}</p>
+                </div>
             </div>
             <button onClick={playPrev}>prev</button>
             <audio ref={audioPlayer} autoplay={true} onEnded={playNext} src={musicFile()}></audio>
