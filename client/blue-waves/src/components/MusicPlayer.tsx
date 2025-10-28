@@ -13,6 +13,8 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
 
     const [musicFile, setMusicFile] = createSignal("");
 
+    const [coverArtFile, setCoverArtFile] = createSignal("");
+
     const [playing, setPlaying] = createSignal(true);
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
@@ -63,13 +65,77 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
             }
         }
     }
+    
+    const fetchCoverArtFile = async (mid : string) => {
+        // Open music database
+        const db = await openDB("musicFileDB", 1, {
+            upgrade(database) {
+                database.createObjectStore("musicFiles", { keyPath: "music_id" });
+                database.createObjectStore("coverArtFiles", { keyPath: "music_id" });
+            },
+        })
 
-    // Fetch music file whenever musid id updates and update document title
+        // Fetch new token if user refreshed the page
+        if (token() === "") setToken(await getToken());
+
+        // Check music database for a cached value
+        const coverArtFileEntry = await db.get("coverArtFiles", mid);
+        if (coverArtFileEntry !== undefined) {
+            // If a cached value exists perform a conditional request
+            const response = await fetch(`http://localhost:8080/api/v1/users/music/${mid}/cover-art`, {
+                headers: {
+                    "Authorization": `Bearer ${token()}`,
+                    "If-Modified-Since": coverArtFileEntry["last_modified"]
+                }
+            });
+
+            if (response.ok) {
+                // Cache miss: decode new data and update cache
+                const imageBuffer = await response.arrayBuffer();
+                const blob = new Blob([imageBuffer])
+                const url = window.URL.createObjectURL(blob);
+
+                await db.put("coverArtFiles", {music_id: mid, image_buffer: imageBuffer, last_modified: response.headers.get("Last-Modified")});
+
+                return url;
+            } else if (response.status === 304) {
+                const blob = new Blob([coverArtFileEntry["image_buffer"]]);
+                const url = window.URL.createObjectURL(blob);
+                return url;
+            } else if (response.status === 401) {
+                setToken(await getToken());
+                return await fetchCoverArtFile(mid);
+            }
+        } else {
+            // If no cached value exists perform a normal request for the music file
+            const response = await fetch(`http://localhost:8080/api/v1/users/music/${mid}/cover-art`, {
+                headers: { "Authorization": `Bearer ${token()}` }
+            });
+
+            if (response.ok) {
+                // Decode data as an image
+                const imageBuffer = await response.arrayBuffer();
+                const blob = new Blob([imageBuffer])
+                const url = window.URL.createObjectURL(blob);
+
+                // Cache cover art file for later requests
+                await db.put("coverArtFiles", {music_id: mid, image_buffer: imageBuffer, last_modified: response.headers.get("Last-Modified")});
+
+                return url;
+            } else if (response.status === 401) {
+                setToken(await getToken());
+                return await fetchCoverArtFile(mid);
+            }
+        }
+    }
+
+    // Fetch music and cover art file whenever musid id updates and update document title
     createEffect(() => {
-        fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string))
+        fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string));
+        fetchCoverArtFile(musicId()).then((af) => setCoverArtFile(af as string));
         document.title = `${musicTitle()} - Blue waves`;
     })
-    
+
     const playPause = () => {
         setPlaying(!playing());        
         if (playing()) {
@@ -88,8 +154,11 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     }
 
     return (
-        <div class="flex fixed bottom-0 w-screen h-16 border justify-between items-center bg-gray-100">
-            <p class="ml-4">{musicTitle()}</p>
+        <div class="flex fixed bottom-0 w-screen h-20 border justify-between items-center bg-gray-100">
+            <div class="flex items-center ml-4">
+                <img class="w-16 h-16 rounded" src={coverArtFile()}/>
+                <p class="ml-4">{musicTitle()}</p>
+            </div>
             <button onClick={playPrev}>prev</button>
             <audio ref={audioPlayer} autoplay={true} onEnded={playNext} src={musicFile()}></audio>
             <button onClick={playPause}>{playing() ? "pause" : "play"}</button>
