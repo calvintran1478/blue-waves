@@ -7,6 +7,8 @@ import AddMusicModal from "../components/AddMusicModal.tsx";
 import UpdateMusicModal from "../components/UpdateMusicModal.tsx";
 
 const LibraryPage = () => {
+    document.title = "Blue waves";
+
     const [showAddMusicModal, setShowAddMusicModal] = createSignal(false);
     const [showUpdateMusicModal, setShowUpdateMusicModal] = createSignal(false);
     const [selectedMusicId, setSelectedMusicId] = createSignal("");

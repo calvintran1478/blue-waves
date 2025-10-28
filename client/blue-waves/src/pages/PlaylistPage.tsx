@@ -6,6 +6,8 @@ import { AuthContext } from "..";
 import MusicPlayer from "../components/MusicPlayer";
 
 const PlaylistPage = () => {
+    document.title = "Blue waves";
+    
     const params = useParams();
     const playlistId = params.playlist_id;
 
@@ -63,7 +65,7 @@ const PlaylistPage = () => {
                 </Suspense>
             </div>
             <Show when={showMusicPlayer()}>
-                <MusicPlayer closeCallback={() => setShowMusicPlayer(false)} musicList={playlistMusic()} musicIndex={musicIndex} setMusicIndex={setMusicIndex}/>
+                <MusicPlayer closeCallback={() => {setShowMusicPlayer(false); document.title = "Blue waves"}} musicList={playlistMusic()} musicIndex={musicIndex} setMusicIndex={setMusicIndex}/>
             </Show>
         </div>
     )

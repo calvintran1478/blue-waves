@@ -64,9 +64,10 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
         }
     }
 
-    // Fetch music file whenever musid id updates
+    // Fetch music file whenever musid id updates and update document title
     createEffect(() => {
         fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string))
+        document.title = `${musicTitle()} - Blue waves`;
     })
     
     const playPause = () => {

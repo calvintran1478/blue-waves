@@ -5,6 +5,7 @@ import { getToken } from "../utils/token";
 import { AuthContext } from "../index.tsx"; 
 
 const HomePage = () => {
+    document.title = "Blue waves";
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 

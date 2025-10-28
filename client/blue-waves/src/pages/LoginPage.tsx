@@ -3,6 +3,8 @@ import { useNavigate } from "@solidjs/router";
 import { AuthContext } from "../index.tsx"; 
 
 const LoginPage = () => {
+    document.title = "Blue waves";
+
     let email = "";
     let password = "";
 

@@ -6,6 +6,7 @@ import { getToken } from "../utils/token";
 import { AuthContext } from "../index.tsx";
 
 const MusicPage = () => {
+    document.title = "Blue waves";
 
     const params = useParams();
 

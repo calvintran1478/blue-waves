@@ -2,6 +2,8 @@ import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 
 const RegisterPage = () => {
+    document.title = "Blue waves";
+
     let email = "";
     let password = "";
     let firstName = "";

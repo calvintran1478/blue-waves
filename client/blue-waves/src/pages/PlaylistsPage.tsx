@@ -6,6 +6,7 @@ import AddPlaylistModal from "../components/AddPlaylistModal";
 import UpdatePlaylistModal from "../components/UpdatePlaylistModal";
 
 const PlaylistsPage = () => {
+    document.title = "Blue waves";
 
     const [showAddPlaylistModal, setShowAddPlaylistModal] = createSignal(false);
     const [showUpdatePlaylistModal, setShowUpdatePlaylistModal] = createSignal(false);
