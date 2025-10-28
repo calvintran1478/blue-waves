@@ -1,8 +1,9 @@
-import { createResource, useContext, createSignal, For, Signal, Suspense } from "solid-js";
+import { createResource, useContext, createSignal, For, Signal, Show, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
 import { useParams } from "@solidjs/router";
 import { getToken } from "../utils/token"; 
 import { AuthContext } from "..";
+import MusicPlayer from "../components/MusicPlayer";
 
 const PlaylistPage = () => {
     const params = useParams();
@@ -11,6 +12,7 @@ const PlaylistPage = () => {
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const [playlistName, setPlaylistName] = createSignal("");
+    const [showMusicPlayer, setShowMusicPlayer] = createSignal(false);
 
     const fetchPlaylist = async () => {
         // Fetch new token if user refreshed the page
@@ -33,6 +35,8 @@ const PlaylistPage = () => {
 
     const [playlistMusic] = createResource(fetchPlaylist);
 
+    const [musicIndex, setMusicIndex] = createSignal(0);
+
     return (
         <div class="flex">
             <div class="flex flex-col w-1/5 h-screen border-2">
@@ -47,19 +51,20 @@ const PlaylistPage = () => {
                     <h1 class="text-3xl font-semibold mt-16 mb-4">{playlistName()}</h1>
                     <hr class="border my-2"/>
                     <For each={playlistMusic()}>
-                        {(musicEntry) => (
+                        {(musicEntry, index) => (
                             <div class="flex justify-between items-center h-16 w-auto my-2 border-2">
-                                <A href={musicEntry["music_id"]}>
-                                    <div>
-                                        <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
-                                        <h3 class="text-lg">{musicEntry["artist"]}</h3>
-                                    </div>
-                                </A>
+                                <button onClick={() => {setMusicIndex(index); setShowMusicPlayer(true)}}>
+                                    <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
+                                    <h3 class="text-lg">{musicEntry["artist"]}</h3>
+                                </button>
                             </div>
                         )}
                     </For>
                 </Suspense>
             </div>
+            <Show when={showMusicPlayer()}>
+                <MusicPlayer closeCallback={() => setShowMusicPlayer(false)} musicList={playlistMusic()} musicIndex={musicIndex} setMusicIndex={setMusicIndex}/>
+            </Show>
         </div>
     )
 }
