@@ -2,6 +2,8 @@ import { createSignal, useContext, Signal, Accessor, Setter, createEffect } from
 import { AuthContext } from "../index.tsx"; 
 import { getToken } from "../utils/token";
 import { openDB } from "idb";
+import soundPng from "../assets/sound.png";
+import mutePng from "../assets/mute.png";
 
 interface MusicEntry {
     music_id: string,
@@ -17,6 +19,12 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
 
     const [playing, setPlaying] = createSignal(true);
 
+    const [currentTime, setCurrentTime] = createSignal("00:00");
+    const [endTime, setEndTime] = createSignal("00:00");
+
+    const [mute, setMute] = createSignal(false);
+    let previousVolume = "0";
+
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const musicId = () => props.musicList[props.musicIndex()!]["music_id"] // Derived signal
@@ -24,6 +32,16 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     const musicArtist = () => props.musicList[props.musicIndex()!]["artist"] // Derived signal
 
     let audioPlayer!: HTMLAudioElement;
+    let seekControl!: HTMLInputElement;
+    let volumeControl!: HTMLInputElement;
+
+    const getTimeString = (time: number) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        const minuteString = minutes < 10 ? `0${minutes}` : minutes.toString();
+        const secondsString = seconds < 10 ? `0${seconds}` : seconds.toString();
+        return `${minuteString}:${secondsString}`;
+    }
 
     const fetchMusicFile = async (mid : string) => {
         // Open music database
@@ -138,7 +156,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     })
 
     const playPause = () => {
-        setPlaying(!playing());        
+        setPlaying(!playing());
         if (playing()) {
             audioPlayer.play();
         } else {
@@ -154,19 +172,59 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
         props.setMusicIndex(props.musicIndex() === props.musicList.length - 1 ? 0 : props.musicIndex()! + 1)
     }
 
+    const handleMute = () => {
+        setMute(!mute());
+        if (mute()) {
+            previousVolume = volumeControl.value;
+            volumeControl.value = "0";
+            audioPlayer.volume = 0;
+        } else {
+            volumeControl.value = previousVolume;
+            audioPlayer.volume = parseFloat(previousVolume);
+        }
+    }
+
+    const handleTimeUpdate = () => {
+        seekControl.value = audioPlayer.currentTime.toString();
+        setCurrentTime(getTimeString(audioPlayer.currentTime));
+        if (!isNaN(audioPlayer.duration)) {
+            setEndTime(getTimeString(audioPlayer.duration));
+        }
+    }
+
+    const handleVolumeUpdate = (event: Event) => {
+        const volumeInput = event.target as HTMLInputElement;
+        const newVolume = volumeInput.value;
+
+        audioPlayer.volume = parseFloat(newVolume);
+        previousVolume = newVolume;
+        setMute(false);
+    }
+
     return (
         <div class="flex fixed bottom-0 w-screen h-20 border justify-between items-center bg-gray-100">
+            <audio ref={audioPlayer} autoplay={true} onTimeUpdate={handleTimeUpdate} onEnded={playNext} src={musicFile()}></audio>
             <div class="flex items-center ml-4">
                 <img class="w-16 h-16 rounded" src={coverArtFile()}/>
-                <div class="ml-4">
+                <div class="mx-4">
                     <p class="font-semibold">{musicTitle()}</p>
                     <p>{musicArtist()}</p>
                 </div>
+                <p>{currentTime()}</p>
+                <input class="mx-2 w-40" ref={seekControl} onChange={(event) => {audioPlayer.currentTime = parseInt(event.target.value)}} type="range" id="seek" name="seek" value={0} min="0" max={audioPlayer.duration}/>
+                <p>{endTime()}</p>
             </div>
-            <button onClick={playPrev}>prev</button>
-            <audio ref={audioPlayer} autoplay={true} onEnded={playNext} src={musicFile()}></audio>
-            <button onClick={playPause}>{playing() ? "pause" : "play"}</button>
-            <button onClick={playNext}>next</button>
+            <div>
+                <button onClick={playPrev}>prev</button>
+                <button class="mx-12" onClick={playPause}>{playing() ? "pause" : "play"}</button>
+                <button onClick={playNext}>next</button>
+            </div>
+            <div class="flex">
+                <button onClick={handleMute}>
+                    <img class="w-8 h-8 mx-4" src={mute() ? mutePng : soundPng}/>
+                </button>
+                <input class="w-40" ref={volumeControl} onInput={handleVolumeUpdate} type="range" id="sound" name="sound" step="0.02" value="1" min="0" max="1"/>
+            </div>
             <button class="mr-4" onClick={props.closeCallback}>close</button>
         </div>
     )
