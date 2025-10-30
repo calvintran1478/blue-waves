@@ -77,7 +77,7 @@ const AddPlaylistMusicModal = (props: { closeCallback: () => void, playlistId: s
                             {(musicEntry) => (
                                 <div class="my-4">
                                     <input class="w-4 h-4 mx-4" type="checkbox" id={musicEntry["music_id"]}/>
-                                    <label class="text-lg">{musicEntry["title"]} - {musicEntry["artist"]}</label>
+                                    <label class="text-lg" for={musicEntry["music_id"]}>{musicEntry["title"]} - {musicEntry["artist"]}</label>
                                 </div>
                             )}
                         </For>
