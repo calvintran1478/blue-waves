@@ -1,5 +1,5 @@
 import { createSignal, useContext, Resource, Signal, Setter, Show } from "solid-js";
-import { AuthContext } from "../index.tsx"; 
+import { AuthContext } from "../index.tsx";
 import { getToken } from "../utils/token";
 import LoadingSpinner from "../components/LoadingSpinner";
 

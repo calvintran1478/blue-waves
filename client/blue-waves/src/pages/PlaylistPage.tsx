@@ -3,6 +3,7 @@ import { A } from "@solidjs/router";
 import { useParams } from "@solidjs/router";
 import { getToken } from "../utils/token"; 
 import { AuthContext } from "..";
+import AddPlaylistMusicModal from "../components/AddPlaylistMusicModal"; 
 import MusicPlayer from "../components/MusicPlayer";
 
 const PlaylistPage = () => {
@@ -14,6 +15,7 @@ const PlaylistPage = () => {
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
     const [playlistName, setPlaylistName] = createSignal("");
+    const [showAddPlaylistMusicModal, setShowAddPlaylistMusicModal] = createSignal(false);
     const [showMusicPlayer, setShowMusicPlayer] = createSignal(false);
 
     const fetchPlaylist = async () => {
@@ -35,7 +37,7 @@ const PlaylistPage = () => {
         }
     }
 
-    const [playlistMusic] = createResource(fetchPlaylist);
+    const [playlistMusic, modifyPlaylistMusic] = createResource(fetchPlaylist);
 
     const [musicIndex, setMusicIndex] = createSignal(0);
 
@@ -51,6 +53,7 @@ const PlaylistPage = () => {
             <div class="flex flex-col w-4/5">
                 <Suspense>
                     <h1 class="text-3xl font-semibold mt-16 mb-4">{playlistName()}</h1>
+                    <button class="rounded w-24 h-10 border-2 my-2" onClick={() => setShowAddPlaylistMusicModal(true)}>Add Music</button>
                     <hr class="border my-2"/>
                     <For each={playlistMusic()}>
                         {(musicEntry, index) => (
@@ -66,6 +69,11 @@ const PlaylistPage = () => {
             </div>
             <Show when={showMusicPlayer()}>
                 <MusicPlayer closeCallback={() => {setShowMusicPlayer(false); document.title = "Blue waves"}} musicList={playlistMusic()} musicIndex={musicIndex} setMusicIndex={setMusicIndex}/>
+            </Show>
+            <Show when={showAddPlaylistMusicModal()}>
+                <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
+                    <AddPlaylistMusicModal closeCallback={() => setShowAddPlaylistMusicModal(false)} playlistId={playlistId} playlistMusic={playlistMusic} setPlaylistMusic={modifyPlaylistMusic.mutate}/>
+                </div>
             </Show>
         </div>
     )
