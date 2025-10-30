@@ -36,8 +36,13 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     let volumeControl!: HTMLInputElement;
 
     const getTimeString = (time: number) => {
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60);
+        let seconds = Math.floor(time);
+        let minutes = 0;
+        while (seconds >= 60) {
+            minutes += 1;
+            seconds -= 60;
+        }
+
         const minuteString = minutes < 10 ? `0${minutes}` : minutes.toString();
         const secondsString = seconds < 10 ? `0${seconds}` : seconds.toString();
         return `${minuteString}:${secondsString}`;
