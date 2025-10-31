@@ -157,6 +157,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     createEffect(() => {
         fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string));
         fetchCoverArtFile(musicId()).then((af) => setCoverArtFile(af as string));
+        setPlaying(true);
         document.title = `${musicTitle()} - Blue waves`;
     })
 
