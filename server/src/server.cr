@@ -14,6 +14,19 @@ require "./repositories/playlist_repository"
 require "./utils/env"
 require "./utils/config"
 
+# Read CLI arguments
+if ARGV.size != 0 && ARGV.size != 2
+  puts "Error: Unexpected number of arguments"
+  puts "Usage: ./server"
+  puts "Usage: ./server [host] [port]"
+  exit 1
+end
+host, port = if ARGV.size == 2
+  {ARGV[0], ARGV[1].to_i}
+else
+  {"127.0.0.1", 8080}
+end
+
 # Load environment
 Utils::Env.load_env()
 
@@ -72,6 +85,6 @@ server = HTTP::Server.new do |context|
 end
 
 # Run server
-address = server.bind_tcp 8080
+address = server.bind_tcp(host, port)
 puts "Listening on port #{address.port}"
 server.listen
