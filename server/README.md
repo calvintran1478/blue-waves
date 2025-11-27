@@ -45,11 +45,7 @@ valkey-server valkey.conf
 
 In the src directory create a .env file with the following contents.
 ```
-DB_HOST=<host>
-DB_USER=<username>
-DB_PASSWORD=<password>
-DB_PORT=<port>
-DB_NAME=<dbname>
+DB_CONN=<db_conn>
 
 AUTH_DB_HOST=<auth_host>
 AUTH_DB_USER=<auth_username>
@@ -61,13 +57,14 @@ MUSIC_DB_LOCATION=<music_location>
 MUSIC_DB_KEY=<music_key>
 MUSIC_DB_SCRET=<music_secret>
 MUSIC_DB_ENDPOINT=<music_endpoint>
+MUSIC_DB_BUCKET=<music_bucket>
 
 API_SECRET=<api_secret>
 BCRYPT_COST=<bcrypt_cost>
 ACCESS_TOKEN_MINUTE_LIFESPAN=<access_token_lifespan>
 REFRESH_TOKEN_HOUR_LIFESPAN=<refresh_token_lifespan>
 ```
-The DB, AUTH_DB, and MUSIC_DB parameters should be those of your Postgres, Valkey, and S3-compatible storage provider, respectively. If you are running Postgres and Valkey locally, the host will be simply "localhost", the port for Postgres will be 5432, and the parameter AUTH_TLS_ENABLED should be set to "false".
+DB_CONN should be a connection string to your Postgres instance. The AUTH_DB, and MUSIC_DB parameters should be those of your Valkey and S3-compatible storage provider, respectively. If you are running Postgres and Valkey locally, the host will be simply "localhost", the port for Postgres will be 5432, and the parameter AUTH_TLS_ENABLED should be set to "false". Your Postgres connection string should be of the form "postgres://<username>:<password>@localhost:5432/<dbname>" if it is being run locally.
 
 The API secret should be a string only known by you (the one running the server), and is used for authentication purposes. If the server is made publicly available this should be sufficiently long and hard to guess (for example, a random string of 24 or more characters).
 

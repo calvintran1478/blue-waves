@@ -17,11 +17,7 @@ require "./utils/config"
 # Load environment
 Utils::Env.load_env()
 
-DB_USER = ENV["DB_USER"]
-DB_PASSWORD = ENV["DB_PASSWORD"]
-DB_HOST = ENV["DB_HOST"]
-DB_PORT = ENV["DB_PORT"]
-DB_NAME = ENV["DB_NAME"]
+DB_CONN = ENV["DB_CONN"]
 
 AUTH_DB_USER = ENV["AUTH_DB_USER"]
 AUTH_DB_PASSWORD = ENV["AUTH_DB_PASSWORD"]
@@ -36,7 +32,7 @@ MUSIC_DB_ENDPOINT = ENV["MUSIC_DB_ENDPOINT"]
 MUSIC_DB_BUCKET = ENV["MUSIC_DB_BUCKET"]
 
 # Connect to database
-db = DB.open("postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME}")
+db = DB.open(DB_CONN)
 auth_db = Redis::PooledClient.new(host: AUTH_DB_HOST, port: AUTH_DB_PORT.to_i, password: AUTH_DB_PASSWORD, ssl: AUTH_TLS_ENABLED == "true")
 music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRET, endpoint: MUSIC_DB_ENDPOINT)
 

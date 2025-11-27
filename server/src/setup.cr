@@ -5,15 +5,8 @@ require "./utils/env"
 # Load environment
 Utils::Env.load_env()
 
-# Set up database connection
-DB_USER = ENV["DB_USER"]
-DB_PASSWORD = ENV["DB_PASSWORD"]
-DB_HOST = ENV["DB_HOST"]
-DB_PORT = ENV["DB_PORT"]
-DB_NAME = ENV["DB_NAME"]
-
 # Connect to database and create tables
-DB.connect "postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME}" do |db|
+DB.connect ENV["DB_CONN"] do |db|
   # Create user table
   db.exec(
     <<-SQL
