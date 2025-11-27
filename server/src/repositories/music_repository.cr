@@ -19,7 +19,7 @@ class Repositories::MusicRepository < Repositories::Repository
 
   DEFAULT_S3_HEADER = Hash(String, String).new
 
-  def initialize(@db : DB::Database, @music_db : Awscr::S3::Client)
+  def initialize(@db : DB::Database, @music_db : Awscr::S3::Client, @bucket_name : String)
   end
 
   # Returns whether a music file with the given id exists in the user's collection
@@ -47,7 +47,7 @@ class Repositories::MusicRepository < Repositories::Repository
       object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
 
       # Upload music file to storage bucket
-      @music_db.put_object("blue-waves", object_id, music_file, {"Content-Type" => music_file_type})
+      @music_db.put_object(@bucket_name, object_id, music_file, {"Content-Type" => music_file_type})
 
       # Upload cover art file to storage bucket (if one was included)
       unless art_file.nil?
@@ -61,7 +61,7 @@ class Repositories::MusicRepository < Repositories::Repository
         object_id = object_id_buffer.to_unsafe.as(String)
         object_id.initialize_header(bytesize, bytesize)
 
-        @music_db.put_object("blue-waves", object_id, art_file, {"Content-Type" => art_file_type.as(String)})
+        @music_db.put_object(@bucket_name, object_id, art_file, {"Content-Type" => art_file_type.as(String)})
       end
 
       music_id
@@ -128,14 +128,14 @@ class Repositories::MusicRepository < Repositories::Repository
       s3_headers = {"Range" => range_header}
 
       # Fetch requested byte range from storage bucket
-      @music_db.get_object("blue-waves", object_id, s3_headers) do |music_file|
+      @music_db.get_object(@bucket_name, object_id, s3_headers) do |music_file|
         context.response.content_type = music_file.headers["Content-Type"]
         context.response.status = HTTP::Status::PARTIAL_CONTENT
         IO.copy(music_file.body_io, context.response.output)
       end
     else
       # Fetch complete music file from storage bucket
-      @music_db.get_object("blue-waves", object_id, DEFAULT_S3_HEADER) do |music_file|
+      @music_db.get_object(@bucket_name, object_id, DEFAULT_S3_HEADER) do |music_file|
         context.response.content_type = music_file.headers["Content-Type"]
         context.response.headers["Cache-Control"] = "private"
         context.response.status = HTTP::Status::OK
@@ -160,7 +160,7 @@ class Repositories::MusicRepository < Repositories::Repository
     # Check for conditional request
     modified_since = context.request.headers["If-Modified-Since"]?
     if !modified_since.nil?
-      headers = @music_db.head_object("blue-waves", object_id, DEFAULT_S3_HEADER)
+      headers = @music_db.head_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
       threshold_time = HTTP.parse_time(modified_since)
 
       if !threshold_time.nil? && headers.last_modified <= threshold_time
@@ -172,7 +172,7 @@ class Repositories::MusicRepository < Repositories::Repository
     end
 
     # Fetch music cover art from storage bucket
-    @music_db.get_object("blue-waves", object_id, DEFAULT_S3_HEADER) do |art_file|
+    @music_db.get_object(@bucket_name, object_id, DEFAULT_S3_HEADER) do |art_file|
       context.response.content_type = art_file.headers["Content-Type"]
       context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
       context.response.headers["Cache-Control"] = "private, no-cache"
@@ -198,13 +198,13 @@ class Repositories::MusicRepository < Repositories::Repository
     # Check if cover art is being set for the first time
     first_created = false
     begin
-      @music_db.head_object("blue-waves", object_id, DEFAULT_S3_HEADER)
+      @music_db.head_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
     rescue
       first_created = true
     end
 
     # Set cover art
-    @music_db.put_object("blue-waves", object_id, art_file, {"Content-Type" => art_file_type})
+    @music_db.put_object(@bucket_name, object_id, art_file, {"Content-Type" => art_file_type})
 
     first_created
   end
@@ -245,7 +245,7 @@ class Repositories::MusicRepository < Repositories::Repository
       # Delete music file
       object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
       object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
-      @music_db.delete_object("blue-waves", object_id, DEFAULT_S3_HEADER)
+      @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
 
       # Delete cover art
       cover_art_str = "/cover-art"
@@ -257,7 +257,7 @@ class Repositories::MusicRepository < Repositories::Repository
       object_id = object_id_buffer.to_unsafe.as(String)
       object_id.initialize_header(bytesize, bytesize)
 
-      @music_db.delete_object("blue-waves", object_id, DEFAULT_S3_HEADER)
+      @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
     end
 
     file_exists

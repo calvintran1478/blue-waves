@@ -33,6 +33,7 @@ MUSIC_DB_LOCATION = ENV["MUSIC_DB_LOCATION"]
 MUSIC_DB_KEY = ENV["MUSIC_DB_KEY"]
 MUSIC_DB_SECRET = ENV["MUSIC_DB_SECRET"]
 MUSIC_DB_ENDPOINT = ENV["MUSIC_DB_ENDPOINT"]
+MUSIC_DB_BUCKET = ENV["MUSIC_DB_BUCKET"]
 
 # Connect to database
 db = DB.open("postgres://#{DB_USER}:#{DB_PASSWORD}@#{DB_HOST}:#{DB_PORT}/#{DB_NAME}")
@@ -46,7 +47,7 @@ rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_bucke
 
 # Initialize repositories
 user_repository = Repositories::UserRepository.new(db)
-music_repository = Repositories::MusicRepository.new(db, music_db)
+music_repository = Repositories::MusicRepository.new(db, music_db, MUSIC_DB_BUCKET)
 playlist_repository = Repositories::PlaylistRepository.new(db)
 
 # Initialize resource controllers
