@@ -59,7 +59,7 @@ music_controller = Controllers::MusicController.new(music_repository, auth_middl
 playlist_controller = Controllers::PlaylistController.new(playlist_repository, music_repository, auth_middleware)
 
 # Set up static file handler
-static_file_handler = HTTP::StaticFileHandler.new("src/static", directory_listing: false)
+static_file_handler = HTTP::StaticFileHandler.new("static", directory_listing: false)
 
 # Define server handling of requests
 server = HTTP::Server.new do |context|
