@@ -31,12 +31,7 @@ end
 Utils::Env.load_env()
 
 DB_CONN = ENV["DB_CONN"]
-
-AUTH_DB_USER = ENV["AUTH_DB_USER"]
-AUTH_DB_PASSWORD = ENV["AUTH_DB_PASSWORD"]
-AUTH_DB_HOST = ENV["AUTH_DB_HOST"]
-AUTH_DB_PORT = ENV["AUTH_DB_PORT"]
-AUTH_TLS_ENABLED = ENV["AUTH_TLS_ENABLED"]
+AUTH_DB_CONN = ENV["AUTH_DB_CONN"]
 
 MUSIC_DB_LOCATION = ENV["MUSIC_DB_LOCATION"]
 MUSIC_DB_KEY = ENV["MUSIC_DB_KEY"]
@@ -46,7 +41,7 @@ MUSIC_DB_BUCKET = ENV["MUSIC_DB_BUCKET"]
 
 # Connect to database
 db = DB.open(DB_CONN)
-auth_db = Redis::PooledClient.new(host: AUTH_DB_HOST, port: AUTH_DB_PORT.to_i, password: AUTH_DB_PASSWORD, ssl: AUTH_TLS_ENABLED == "true")
+auth_db = Redis::PooledClient.new(url: AUTH_DB_CONN)
 music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRET, endpoint: MUSIC_DB_ENDPOINT)
 
 # Initialize middleware
