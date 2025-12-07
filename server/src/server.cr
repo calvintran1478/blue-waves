@@ -15,16 +15,14 @@ require "./utils/env"
 require "./utils/config"
 
 # Read CLI arguments
-if ARGV.size != 0 && ARGV.size != 2
+case ARGV.size
+when 0 then host, port = "127.0.0.1", 8080
+when 2 then host, port = ARGV[0], ARGV[1].to_i
+else
   puts "Error: Unexpected number of arguments"
   puts "Usage: ./server"
   puts "Usage: ./server [host] [port]"
   exit 1
-end
-host, port = if ARGV.size == 2
-  {ARGV[0], ARGV[1].to_i}
-else
-  {"127.0.0.1", 8080}
 end
 
 # Load environment
