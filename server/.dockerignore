@@ -1,0 +1,104 @@
+# flyctl launch added from .gitignore
+**/lib
+**/.env
+**/dump.rdb
+
+# flyctl launch added from src/lib/awscr-s3/.gitignore
+src/lib/awscr-s3/doc
+src/lib/awscr-s3/docs
+src/lib/awscr-s3/lib
+src/lib/awscr-s3/bin
+src/lib/awscr-s3/.shards
+
+# Libraries don't need dependency lock
+# Dependencies will be locked in application that uses them
+src/lib/awscr-s3/shard.lock
+
+src/lib/awscr-s3/**/.DS_Store
+
+# flyctl launch added from src/lib/awscr-signer/.gitignore
+src/lib/awscr-signer/doc
+src/lib/awscr-signer/libs
+src/lib/awscr-signer/.crystal
+src/lib/awscr-signer/.shards
+src/lib/awscr-signer/lib
+
+src/lib/awscr-signer/**/.DS_Store
+
+# Libraries don't need dependency lock
+# Dependencies will be locked in application that uses them
+src/lib/awscr-signer/shard.lock
+
+src/lib/awscr-signer/**/.crystal-version
+
+# flyctl launch added from src/lib/db/.gitignore
+src/lib/db/docs
+src/lib/db/lib
+src/lib/db/bin
+src/lib/db/.shards
+src/lib/db/**/*.dwarf
+
+# Libraries don't need dependency lock
+# Dependencies will be locked in application that uses them
+src/lib/db/shard.lock
+
+
+# flyctl launch added from src/lib/pg/.gitignore
+src/lib/pg/**/.crystal
+src/lib/pg/**/.shards
+src/lib/pg/**/shard.lock
+src/lib/pg/**/lib
+src/lib/pg/**/tmp
+src/lib/pg/**/test*.cr
+src/lib/pg/**/spec/.run_auth_specs
+src/lib/pg/**/.cert
+src/lib/pg/**/.envrc
+src/lib/pg/**/result
+src/lib/pg/**/.direnv
+
+# flyctl launch added from src/lib/pool/.gitignore
+src/lib/pool/**/.crystal
+src/lib/pool/**/.shards
+src/lib/pool/**/lib
+
+# flyctl launch added from src/lib/prop/.gitignore
+src/lib/prop/local
+src/lib/prop/.local
+src/lib/prop/~
+src/lib/prop/home
+
+# /docs/
+src/lib/prop/lib
+src/lib/prop/bin
+src/lib/prop/.shards
+src/lib/prop/**/*.dwarf
+
+src/lib/prop/shard.lock
+
+# flyctl launch added from src/lib/redis/.gitignore
+src/lib/redis/**/.crystal
+src/lib/redis/**/.deps
+src/lib/redis/**/.deps.lock
+src/lib/redis/**/.shards
+src/lib/redis/**/lib
+src/lib/redis/**/redis
+src/lib/redis/**/TODO.md
+src/lib/redis/**/experiments
+src/lib/redis/**/shard.lock
+src/lib/redis/**/*.code-workspace
+
+# flyctl launch added from src/lib/validator/.gitignore
+src/lib/validator/.local
+src/lib/validator/~
+src/lib/validator/home
+
+# /docs/
+src/lib/validator/lib
+src/lib/validator/bin
+src/lib/validator/.shards
+src/lib/validator/**/*.dwarf
+
+# Libraries don't need dependency lock
+# Dependencies will be locked in applications that use them
+src/lib/validator/shard.lock
+fly.toml
