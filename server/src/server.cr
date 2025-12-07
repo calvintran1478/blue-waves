@@ -28,7 +28,7 @@ else
 end
 
 # Load environment
-Utils::Env.load_env()
+Utils::Env.load_env() if host == "127.0.0.1"
 
 DB_CONN = ENV["DB_CONN"]
 AUTH_DB_CONN = ENV["AUTH_DB_CONN"]
