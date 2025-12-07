@@ -1,4 +1,5 @@
 lib
 bin
+static
 .env
 dump.rdb
