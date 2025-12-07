@@ -6,7 +6,7 @@ In addition, ensure you have access to an S3-compatible storage provider along w
 
 ## Building Dependencies
 
-cd into the src directory and run the following command to install the dependencies.
+cd into the server directory and run the following command to install the dependencies.
 ```bash
 shards install
 ```
@@ -43,7 +43,7 @@ valkey-server valkey.conf
 
 ## Setting up Environment Variables
 
-In the src directory create a .env file with the following contents.
+In the server directory create a .env file with the following contents.
 ```
 DB_CONN=<db_conn>
 
@@ -72,28 +72,34 @@ The access token lifespan, refresh token lifespan, and bcrypt cost should all be
 
 ## Rate Limiting
 
-The rate_limit.conf file in the src directory defines how often certain endpoints can be accessed. Here the capacity, refill amount, and refill interval of an endpoint can be changed from their default values. The refill interval is expressed in seconds. Rate limiting is always done on a per-user basis.
+The rate_limit.conf file defines how often certain endpoints can be accessed. Here the capacity, refill amount, and refill interval of an endpoint can be changed from their default values. The refill interval is expressed in seconds. Rate limiting is always done on a per-user basis.
 
 ## Database Table Setup
 
 Before starting the server for the first time you will need to create the database tables. This can be done using the following command:
 ```bash
-crystal setup.cr
+crystal src/setup.cr
 ```
 
 ## Starting the Server
 
-You can start the server by running the following command in the src directory: 
+You can start the server by running the following command in the server directory: 
 ```bash
-crystal server.cr
+crystal src/server.cr
 ```
-Alternatively, you can compile the server ahead of time and start the server by running it as an executable.
+Alternatively, you can compile the server ahead of time and start the server by running it as an executable. Start by creating a directory to store the target binary file:
 ```bash
-crystal build server.cr
-./server
+mkdir bin
 ```
-If you want to optimize for performance, you can compile the server using the --release flag. However, compiling will take a bit longer.
+Compile the server by running
 ```bash
-crystal build --release server.cr
-./server
+crystal build src/server.cr -o bin/server
+```
+If you want to optimize for performance you can compile the server using the --release flag. However, compiling will take a bit longer.
+```bash
+crystal build src/server.cr --release -o bin/server
+```
+You can now start the server by running
+```bash
+./bin/server
 ```

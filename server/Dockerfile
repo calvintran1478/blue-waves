@@ -6,6 +6,7 @@ WORKDIR /app
 
 # Copy source files to working directory
 COPY ./src /app
+COPY shard.yml shard.lock rate_limit.conf /app
 
 # Install required dependencies
 RUN shards install
