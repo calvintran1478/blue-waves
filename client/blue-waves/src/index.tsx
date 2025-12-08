@@ -11,6 +11,7 @@ const MusicPage = lazy(() => import("./pages/MusicPage"));
 const PlaylistsPage = lazy(() => import("./pages/PlaylistsPage"));
 const PlaylistPage = lazy(() => import("./pages/PlaylistPage"));
 
+export const apiDomain = import.meta.env.PROD ? "https://server-green-violet-721.fly.dev" : "http://localhost:8080";
 export const AuthContext = createContext();
 
 function AuthProvider(props: any) {

@@ -1,5 +1,5 @@
 import { createResource, useContext, For, Resource, Signal, Setter, Suspense } from "solid-js";
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 import { getToken } from "../utils/token";
 
 // Expected fields for each music entry
@@ -25,7 +25,7 @@ const AddPlaylistMusicModal = (props: { closeCallback: () => void, playlistId: s
             }
         })
 
-        const response = await fetch(`http://localhost:8080/api/v1/users/playlists/${props.playlistId}/music`, {
+        const response = await fetch(`${apiDomain}/api/v1/users/playlists/${props.playlistId}/music`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
             body: selectedMusicId
@@ -48,7 +48,7 @@ const AddPlaylistMusicModal = (props: { closeCallback: () => void, playlistId: s
     // Search for music tracks not in playlist
     const fetchNewMusic = async () => {
         // Get music entries
-        const response = await fetch("http://localhost:8080/api/v1/users/music", {
+        const response = await fetch(`${apiDomain}/api/v1/users/music`, {
             headers: { "Authorization": `Bearer ${token()}` }
         });
 

@@ -3,7 +3,7 @@ import { useParams } from "@solidjs/router";
 import { until } from "@solid-primitives/promise"; 
 import { openDB } from "idb";
 import { getToken } from "../utils/token";
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 
 const MusicPage = () => {
     document.title = "Blue waves";
@@ -28,7 +28,7 @@ const MusicPage = () => {
         const coverArtFileEntry = await db.get("coverArtFiles", params.music_id);
         if (coverArtFileEntry !== undefined) {
             // If a cached value exists perform a conditional request
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${params.music_id}/cover-art`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${params.music_id}/cover-art`, {
                 headers: {
                     "Authorization": `Bearer ${token()}`,
                     "If-Modified-Since": coverArtFileEntry["last_modified"]
@@ -54,7 +54,7 @@ const MusicPage = () => {
             }
         } else {
             // If no cached value exists perform a normal request for the music file
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${params.music_id}/cover-art`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${params.music_id}/cover-art`, {
                 headers: { "Authorization": `Bearer ${token()}` }
             });
 
@@ -99,7 +99,7 @@ const MusicPage = () => {
             if (token() === "") setToken(await getToken());
 
             // If no cached value exists perform a normal request for the music file
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${params.music_id}`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${params.music_id}`, {
                 headers: { "Authorization": `Bearer ${token()}` }
             });
 

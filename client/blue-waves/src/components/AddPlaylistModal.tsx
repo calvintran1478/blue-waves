@@ -1,5 +1,5 @@
 import { useContext, Resource, Signal, Setter } from "solid-js";
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 import { getToken } from "../utils/token"; 
 
 // Expected fields for each playlist
@@ -18,7 +18,7 @@ const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resourc
         // Prevent refresh
         event.preventDefault();
 
-        const response = await fetch("http://localhost:8080/api/v1/users/playlists", {
+        const response = await fetch(`${apiDomain}/api/v1/users/playlists`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
             body: name

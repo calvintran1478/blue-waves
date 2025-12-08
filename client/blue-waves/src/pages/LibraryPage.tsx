@@ -2,7 +2,7 @@ import { createSignal, createResource, useContext, For, Show, Suspense, Signal }
 import { A } from "@solidjs/router";
 import { openDB } from "idb";
 import { getToken } from "../utils/token";
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 import AddMusicModal from "../components/AddMusicModal.tsx";
 import UpdateMusicModal from "../components/UpdateMusicModal.tsx";
 
@@ -23,7 +23,7 @@ const LibraryPage = () => {
         if (token() === "") setToken(await getToken());
 
         // Get music entries
-        const response = await fetch("http://localhost:8080/api/v1/users/music", {
+        const response = await fetch(`${apiDomain}/api/v1/users/music`, {
             headers: { "Authorization": `Bearer ${token()}` }
         });
 
@@ -54,7 +54,7 @@ const LibraryPage = () => {
         const coverArtFileEntry = await db.get("coverArtFiles", selectedMusicId());
         if (coverArtFileEntry !== undefined) {
             // If a cached value exists perform a conditional request
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${selectedMusicId()}/cover-art`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${selectedMusicId()}/cover-art`, {
                 headers: {
                     "Authorization": `Bearer ${token()}`,
                     "If-Modified-Since": coverArtFileEntry["last_modified"]
@@ -81,7 +81,7 @@ const LibraryPage = () => {
 
         } else {
             // If no cached value exists perform a normal request for the cover art file
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${selectedMusicId()}/cover-art`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${selectedMusicId()}/cover-art`, {
                 headers: { "Authorization": `Bearer ${token()}` }
             });
 

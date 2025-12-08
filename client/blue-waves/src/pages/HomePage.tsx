@@ -2,7 +2,7 @@ import { useContext, Signal } from "solid-js";
 import { A, useNavigate } from "@solidjs/router";
 import DropDownMenu from "../components/DropDownMenu.tsx";
 import { getToken } from "../utils/token";
-import { AuthContext } from "../index.tsx"; 
+import { apiDomain, AuthContext } from "../index.tsx"; 
 
 const HomePage = () => {
     document.title = "Blue waves";
@@ -16,7 +16,7 @@ const HomePage = () => {
         if (token() === "") setToken(await getToken());
 
         // Logout user
-        const response = await fetch("http://localhost:8080/api/v1/users/logout", {
+        const response = await fetch(`${apiDomain}/api/v1/users/logout`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
             credentials: "include"

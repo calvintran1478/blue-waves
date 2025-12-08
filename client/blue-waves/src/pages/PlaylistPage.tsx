@@ -2,7 +2,7 @@ import { createResource, useContext, createSignal, For, Signal, Show, Suspense }
 import { A } from "@solidjs/router";
 import { useParams } from "@solidjs/router";
 import { getToken } from "../utils/token"; 
-import { AuthContext } from "..";
+import { apiDomain, AuthContext } from "../index.tsx";
 import AddPlaylistMusicModal from "../components/AddPlaylistMusicModal"; 
 import MusicPlayer from "../components/MusicPlayer";
 
@@ -23,7 +23,7 @@ const PlaylistPage = () => {
         if (token() === "") setToken(await getToken());
 
         // Get playlist music
-        const response = await fetch(`http://localhost:8080/api/v1/users/playlists/${playlistId}`, {
+        const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}`, {
             headers: { "Authorization": `Bearer ${token()}` }
         });
 

@@ -1,5 +1,5 @@
 import { createSignal, useContext, Signal, Accessor, Setter, createEffect } from "solid-js";
-import { AuthContext } from "../index.tsx"; 
+import { apiDomain, AuthContext } from "../index.tsx"; 
 import { getToken } from "../utils/token";
 import { openDB } from "idb";
 import soundPng from "../assets/sound.png";
@@ -69,7 +69,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
             if (token() === "") setToken(await getToken());
 
             // If no cached value exists perform a normal request for the music file
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${mid}`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${mid}`, {
                 headers: { "Authorization": `Bearer ${token()}` }
             });
 
@@ -106,7 +106,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
         const coverArtFileEntry = await db.get("coverArtFiles", mid);
         if (coverArtFileEntry !== undefined) {
             // If a cached value exists perform a conditional request
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${mid}/cover-art`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${mid}/cover-art`, {
                 headers: {
                     "Authorization": `Bearer ${token()}`,
                     "If-Modified-Since": coverArtFileEntry["last_modified"]
@@ -132,7 +132,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
             }
         } else {
             // If no cached value exists perform a normal request for the music file
-            const response = await fetch(`http://localhost:8080/api/v1/users/music/${mid}/cover-art`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/music/${mid}/cover-art`, {
                 headers: { "Authorization": `Bearer ${token()}` }
             });
 

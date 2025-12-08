@@ -1,6 +1,6 @@
 import { createSignal, useContext, Show, Signal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { AuthContext } from "../index.tsx"; 
+import { apiDomain, AuthContext } from "../index.tsx"; 
 
 const LoginPage = () => {
     document.title = "Blue waves";
@@ -23,7 +23,7 @@ const LoginPage = () => {
         setLoginLoading(true);
         setLoginError("");
 
-        const response = await fetch("http://localhost:8080/api/v1/users/login", {
+        const response = await fetch(`${apiDomain}/api/v1/users/login`, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             body: `${email}\n${password}`,

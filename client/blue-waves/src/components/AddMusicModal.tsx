@@ -1,5 +1,5 @@
 import { createSignal, useContext, Resource, Signal, Setter, Show } from "solid-js";
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 import { getToken } from "../utils/token";
 import LoadingSpinner from "../components/LoadingSpinner";
 
@@ -35,7 +35,7 @@ const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resourc
         }
 
         setAddMusicLoading(true);
-        const response = await fetch("http://localhost:8080/api/v1/users/music", {
+        const response = await fetch(`${apiDomain}/api/v1/users/music`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
             body: formData

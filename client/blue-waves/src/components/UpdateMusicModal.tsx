@@ -2,7 +2,7 @@ import { createSignal, createResource, useContext, Switch, Match, Accessor, Reso
 import { until } from "@solid-primitives/promise"; 
 import { openDB } from "idb";
 import { getToken } from "../utils/token";
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Expected fields for each music entry
@@ -35,7 +35,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
 
     const updateMusic = async() => {
         // Update music metadata
-        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
+        const response = await fetch(`${apiDomain}/api/v1/users/music/${props.musicId()}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "text/plain",
@@ -59,7 +59,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         event.preventDefault();
         setDeleteMusicLoading(true);
 
-        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}`, {
+        const response = await fetch(`${apiDomain}/api/v1/users/music/${props.musicId()}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token()}` },
         });
@@ -93,7 +93,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
     const setCoverArt = async () => {
         // Set cover art
         setSetCoverArtLoading(true);
-        const response = await fetch(`http://localhost:8080/api/v1/users/music/${props.musicId()}/cover-art`, {
+        const response = await fetch(`${apiDomain}/api/v1/users/music/${props.musicId()}/cover-art`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${token()}` },
             body: artInput.files![0]

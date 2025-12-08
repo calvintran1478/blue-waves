@@ -1,6 +1,6 @@
 import { useContext, Resource, Signal, Setter } from "solid-js";
 import { getToken } from "../utils/token"; 
-import { AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext } from "../index.tsx";
 
 // Expected fields for each playlist
 interface Playlist {
@@ -22,7 +22,7 @@ const UpdatePlaylistModal = (props: { playlistId: string, closeCallback: () => v
         event.preventDefault();
         if (name !== originalName) {
             // Update playlist name
-            const response = await fetch(`http://localhost:8080/api/v1/users/playlists/${props.playlistId}`, {
+            const response = await fetch(`${apiDomain}/api/v1/users/playlists/${props.playlistId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "text/plain",
@@ -46,7 +46,7 @@ const UpdatePlaylistModal = (props: { playlistId: string, closeCallback: () => v
 
     const deletePlaylist = async(event: Event) => {
         event.preventDefault();
-        const response = await fetch(`http://localhost:8080/api/v1/users/playlists/${props.playlistId}`, {
+        const response = await fetch(`${apiDomain}/api/v1/users/playlists/${props.playlistId}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token()}` }
         });

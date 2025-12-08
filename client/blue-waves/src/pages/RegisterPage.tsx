@@ -1,5 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { apiDomain } from "../index.tsx";
 
 const RegisterPage = () => {
     document.title = "Blue waves";
@@ -22,7 +23,7 @@ const RegisterPage = () => {
         setRegisterLoading(true);
         setRegisterError("");
 
-        const response = await fetch("http://localhost:8080/api/v1/users", {
+        const response = await fetch(`${apiDomain}/api/v1/users`, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             body: `${email}\n${password}\n${firstName}\n${lastName}`
