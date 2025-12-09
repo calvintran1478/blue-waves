@@ -1,7 +1,8 @@
 import { query, redirect } from "@solidjs/router";
+import { apiDomain } from "../index.tsx";
 
 export const getToken = query(async () => {
-    const response = await fetch("http://localhost:8080/api/v1/users/token", {
+    const response = await fetch(`${apiDomain}/api/v1/users/token`, {
         credentials: "include"
     });
 
