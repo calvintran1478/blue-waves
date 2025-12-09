@@ -3,9 +3,9 @@ import { render } from "solid-js/web";
 import { Router, Route } from "@solidjs/router";
 import "./index.css"
 
+const HomePage = lazy(() => import("./pages/HomePage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
-const HomePage = lazy(() => import("./pages/HomePage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
 const MusicPage = lazy(() => import("./pages/MusicPage"));
 const PlaylistsPage = lazy(() => import("./pages/PlaylistsPage"));
@@ -27,9 +27,9 @@ function AuthProvider(props: any) {
 render(
     () => (
         <Router root={(props) => <AuthProvider>{props.children}</AuthProvider>}>
+            <Route path={["/", "/home"]} component={HomePage}/>
             <Route path="/register" component={RegisterPage}/>
             <Route path="/login" component={LoginPage}/>
-            <Route path="/home" component={HomePage}/>
             <Route path="/library" component={LibraryPage}/>
             <Route path="/library/:music_id" component={MusicPage}/>
             <Route path="/playlists" component={PlaylistsPage}/>
