@@ -157,27 +157,27 @@ class Repositories::MusicRepository < Repositories::Repository
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
 
-    # Check for conditional request
-    modified_since = context.request.headers["If-Modified-Since"]?
-    if !modified_since.nil?
-      headers = @music_db.head_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
-      threshold_time = HTTP.parse_time(modified_since)
-
-      if !threshold_time.nil? && headers.last_modified <= threshold_time
-        context.response.headers["Last-Modified"] = HTTP.format_time(headers.last_modified)
-        context.response.headers["Cache-Control"] = "private, no-cache"
-        context.response.status = HTTP::Status::NOT_MODIFIED
-        return
-      end
-    end
-
     # Fetch music cover art from storage bucket
     @music_db.get_object(@bucket_name, object_id, DEFAULT_S3_HEADER) do |art_file|
-      context.response.content_type = art_file.headers["Content-Type"]
-      context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
       context.response.headers["Cache-Control"] = "private, no-cache"
-      context.response.status = HTTP::Status::OK
-      IO.copy(art_file.body_io, context.response.output)
+
+      # Check for conditional request
+      modified_since = context.request.headers["If-Modified-Since"]?
+      not_modified = false
+      unless modified_since.nil?
+        threshold_time = HTTP.parse_time(modified_since)
+        last_modified = HTTP.parse_time(art_file.headers["Last-Modified"])
+        not_modified = !threshold_time.nil? && !last_modified.nil? && last_modified <= threshold_time
+      end
+
+      if not_modified
+        context.response.status = HTTP::Status::NOT_MODIFIED
+      else
+        context.response.headers["Last-Modified"] = art_file.headers["Last-Modified"]
+        context.response.content_type = art_file.headers["Content-Type"]
+        context.response.status = HTTP::Status::OK
+        IO.copy(art_file.body_io, context.response.output)
+      end
     end
   rescue XML::Error
     context.response.status = HTTP::Status::NOT_FOUND
