@@ -153,13 +153,15 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   def update_music(user_id : String, playlist_id : String, music_id : String, music_number : Int32) : (String | Nil)
     @db.transaction do |tx|
+      cnn = tx.connection
+
       # Check if the new music number is valid
-      max_number = @db.query_one "SELECT COUNT(*) FROM playlist_music WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id, as: Int64
+      max_number = cnn.query_one "SELECT COUNT(*) FROM playlist_music WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id, as: Int64
       return "Music number exceeds playlist length" if music_number > max_number
 
       # Record the original music number of the track
       original_music_number = nil
-      @db.query("SELECT music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id) do |rs|
+      cnn.query("SELECT music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id) do |rs|
         rs.each do
           original_music_number = rs.read(Int32)
         end
@@ -167,17 +169,17 @@ class Repositories::PlaylistRepository < Repositories::Repository
       return "Music not found within playlist" if original_music_number.nil?
 
       # Set music number of selected music track a temporary value
-      @db.exec "UPDATE playlist_music SET music_number=0 WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id
+      cnn.exec "UPDATE playlist_music SET music_number=0 WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id
 
       # Update other music numbers to their appropriate values
       if music_number > original_music_number
-        @db.exec "UPDATE playlist_music SET music_number=music_number-1 WHERE user_id=$1 AND playlist_id=$2 AND $3 < music_number AND music_number <= $4", user_id, playlist_id, original_music_number, music_number
+        cnn.exec "UPDATE playlist_music SET music_number=music_number-1 WHERE user_id=$1 AND playlist_id=$2 AND $3 < music_number AND music_number <= $4", user_id, playlist_id, original_music_number, music_number
       elsif music_number < original_music_number
-        @db.exec "UPDATE playlist_music SET music_number=music_number+1 WHERE user_id=$1 AND playlist_id=$2 AND $3 <= music_number AND music_number < $4", user_id, playlist_id, music_number, original_music_number
+        cnn.exec "UPDATE playlist_music SET music_number=music_number+1 WHERE user_id=$1 AND playlist_id=$2 AND $3 <= music_number AND music_number < $4", user_id, playlist_id, music_number, original_music_number
       end
 
       # Set music number of selected music track to its chosen value
-      @db.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", music_number, user_id, playlist_id, music_id
+      cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", music_number, user_id, playlist_id, music_id
     end
 
     nil
@@ -203,15 +205,17 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   def remove_music(user_id : String, playlist_id : String, music_id : String) : Bool
     @db.transaction do |tx|
+      cnn = tx.connection
+
       music_number = nil
-      @db.query("DELETE FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3 RETURNING music_number", user_id, playlist_id, music_id) do |rs|
+      cnn.query("DELETE FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3 RETURNING music_number", user_id, playlist_id, music_id) do |rs|
         rs.each do
           music_number = rs.read(Int32)
         end
       end
       return false if music_number.nil?
 
-      @db.exec "UPDATE playlist_music SET music_number = music_number - 1 WHERE user_id=$1 AND playlist_id=$2 AND music_number > $3", user_id, playlist_id, music_number
+      cnn.exec "UPDATE playlist_music SET music_number = music_number - 1 WHERE user_id=$1 AND playlist_id=$2 AND music_number > $3", user_id, playlist_id, music_number
     end
 
     true
