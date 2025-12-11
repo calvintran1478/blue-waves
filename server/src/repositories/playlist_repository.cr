@@ -155,10 +155,6 @@ class Repositories::PlaylistRepository < Repositories::Repository
     @db.transaction do |tx|
       cnn = tx.connection
 
-      # Check if the new music number is valid
-      max_number = cnn.query_one "SELECT COUNT(*) FROM playlist_music WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id, as: Int64
-      return "Music number exceeds playlist length" if music_number > max_number
-
       # Record the original music number of the track
       original_music_number = nil
       cnn.query("SELECT music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id) do |rs|
@@ -168,12 +164,10 @@ class Repositories::PlaylistRepository < Repositories::Repository
       end
       return "Music not found within playlist" if original_music_number.nil?
 
-      # Set music number of selected music track a temporary value
-      cnn.exec "UPDATE playlist_music SET music_number=0 WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id
-
       # Update other music numbers to their appropriate values
       if music_number > original_music_number
-        cnn.exec "UPDATE playlist_music SET music_number=music_number-1 WHERE user_id=$1 AND playlist_id=$2 AND $3 < music_number AND music_number <= $4", user_id, playlist_id, original_music_number, music_number
+        result = cnn.exec "UPDATE playlist_music SET music_number=music_number-1 WHERE user_id=$1 AND playlist_id=$2 AND $3 < music_number AND music_number <= $4", user_id, playlist_id, original_music_number, music_number
+        return "Music number exceeds playlist length" if result.rows_affected != music_number - original_music_number
       elsif music_number < original_music_number
         cnn.exec "UPDATE playlist_music SET music_number=music_number+1 WHERE user_id=$1 AND playlist_id=$2 AND $3 <= music_number AND music_number < $4", user_id, playlist_id, music_number, original_music_number
       end
