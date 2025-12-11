@@ -18,6 +18,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     const [coverArtFile, setCoverArtFile] = createSignal("");
 
     const [playing, setPlaying] = createSignal(true);
+    const [seeking, setSeeking] = createSignal(false);
 
     const [currentTime, setCurrentTime] = createSignal("00:00");
     const [endTime, setEndTime] = createSignal("00:00");
@@ -191,7 +192,9 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     }
 
     const handleTimeUpdate = () => {
-        seekControl.value = audioPlayer.currentTime.toString();
+        if (!seeking()) {
+            seekControl.value = audioPlayer.currentTime.toString();
+        }
         setCurrentTime(getTimeString(audioPlayer.currentTime));
         if (!isNaN(audioPlayer.duration)) {
             setEndTime(getTimeString(audioPlayer.duration));
@@ -218,7 +221,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
                     <p>{musicArtist()}</p>
                 </div>
                 <p>{currentTime()}</p>
-                <input class="mx-2 w-40" ref={seekControl} onChange={(event) => {audioPlayer.currentTime = parseInt(event.target.value)}} type="range" id="seek" name="seek" value={0} min="0" max={audioPlayer.duration}/>
+                <input class="mx-2 w-40" ref={seekControl} onInput={() => setSeeking(true)} onMouseUp={() => setSeeking(false)} onChange={(event) => {audioPlayer.currentTime = parseInt(event.target.value)}} type="range" id="seek" name="seek" value={0} min="0" max={audioPlayer.duration}/>
                 <p>{endTime()}</p>
             </div>
             <div>
