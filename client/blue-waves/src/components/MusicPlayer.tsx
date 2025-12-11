@@ -201,6 +201,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     const handleVolumeUpdate = (event: Event) => {
         const volumeInput = event.target as HTMLInputElement;
         const newVolume = volumeInput.value;
+        localStorage.setItem("volume", newVolume);
 
         audioPlayer.volume = parseFloat(newVolume);
         previousVolume = newVolume;
@@ -229,7 +230,7 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
                 <button onClick={handleMute}>
                     <img class="w-8 h-8 mx-4" src={mute() ? mutePng : soundPng}/>
                 </button>
-                <input class="w-40" ref={volumeControl} onInput={handleVolumeUpdate} type="range" id="sound" name="sound" step="0.02" value="1" min="0" max="1"/>
+                <input class="w-40" ref={volumeControl} onInput={handleVolumeUpdate} type="range" id="sound" name="sound" step="0.02" value={localStorage.getItem("volume") ?? "1"} min="0" max="1"/>
             </div>
             <button class="mr-4" onClick={props.closeCallback}>close</button>
         </div>

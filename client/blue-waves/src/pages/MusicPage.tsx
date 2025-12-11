@@ -1,4 +1,4 @@
-import { createResource, useContext, Signal, Suspense } from "solid-js";
+import { createResource, useContext, createEffect, Signal, Suspense } from "solid-js";
 import { useParams } from "@solidjs/router";
 import { until } from "@solid-primitives/promise"; 
 import { openDB } from "idb";
@@ -7,6 +7,8 @@ import { apiDomain, AuthContext } from "../index.tsx";
 
 const MusicPage = () => {
     document.title = "Blue waves";
+
+    let videoPlayer!: HTMLVideoElement;
 
     const params = useParams();
 
@@ -123,11 +125,15 @@ const MusicPage = () => {
 
     const [musicFile] = createResource(fetchMusicFile);
 
+    createEffect(() => {
+        videoPlayer.volume = parseFloat(localStorage.getItem("volume") ?? "1");
+    })
+
     return (
         <div class="flex justify-center items-center w-screen h-screen">
             <div class="flex flex-col justify-center items-center aspect-video" style="width: 1080px">
                 <Suspense>
-                    <video controls poster={coverArtFile()} src={musicFile()}></video>
+                    <video ref={videoPlayer} controls poster={coverArtFile()} src={musicFile()}></video>
                 </Suspense>
             </div>
         </div>
