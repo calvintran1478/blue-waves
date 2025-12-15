@@ -40,7 +40,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # playlist_repository.add_music("user_id", "playlist_name", "music_id")
   # ```
   def add_music(user_id : String, playlist_id : String, music_id : String) : Nil
-    @db.exec "INSERT INTO playlist_music (user_id, playlist_id, music_id, music_number) VALUES ($1, $2, $3, (SELECT COUNT(*) FROM playlist_music WHERE user_id=$4 AND playlist_id=$5) + 1)", user_id, playlist_id, music_id, user_id, playlist_id
+    @db.exec "INSERT INTO playlist_music (user_id, playlist_id, music_id, music_number) VALUES ($1, $2, $3, (SELECT COALESCE(MAX(pm.music_number), -256) FROM playlist_music pm WHERE user_id=$4 AND playlist_id=$5) + 256)", user_id, playlist_id, music_id, user_id, playlist_id
   end
 
   # Returns whether a playlist with the given name exists in the user's collection
@@ -155,25 +155,56 @@ class Repositories::PlaylistRepository < Repositories::Repository
     @db.transaction do |tx|
       cnn = tx.connection
 
-      # Record the original music number of the track
+      # Get information about existing music numbers
       original_music_number = nil
-      cnn.query("SELECT music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id) do |rs|
+      music_numbers = [] of Int32
+      cnn.query("SELECT music_id, music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
         rs.each do
-          original_music_number = rs.read(Int32)
+          mi, mn = rs.read(String, Int32)
+          music_numbers << mn
+          original_music_number = music_numbers.size if mi == music_id
         end
       end
+      return "Music number exceeds playlist length" if music_number > music_numbers.size
       return "Music not found within playlist" if original_music_number.nil?
 
-      # Update other music numbers to their appropriate values
-      if music_number > original_music_number
-        result = cnn.exec "UPDATE playlist_music SET music_number=music_number-1 WHERE user_id=$1 AND playlist_id=$2 AND $3 < music_number AND music_number <= $4", user_id, playlist_id, original_music_number, music_number
-        return "Music number exceeds playlist length" if result.rows_affected != music_number - original_music_number
-      elsif music_number < original_music_number
-        cnn.exec "UPDATE playlist_music SET music_number=music_number+1 WHERE user_id=$1 AND playlist_id=$2 AND $3 <= music_number AND music_number < $4", user_id, playlist_id, music_number, original_music_number
+      # If no change is needed return early
+      return if music_number == original_music_number
+
+      # Renormalize music numbers if needed
+      music_numbers_ptr = music_numbers.to_unsafe
+      num_music_tracks = music_numbers.size
+
+      renormalize_required = (music_number == 1 && Int32::MIN <= music_numbers_ptr[0] < Int32::MIN + 256) || (music_number == num_music_tracks && Int32::MAX - 256 < music_numbers_ptr[num_music_tracks - 1] <= Int32::MAX) || (music_numbers_ptr[music_number - 2] == music_numbers_ptr[music_number - 1] - 1)
+      if renormalize_required
+        query = <<-SQL
+          WITH numbered_rows AS(
+            SELECT music_id, ((ROW_NUMBER() OVER (ORDER BY music_number)) - 1) * 256 as new_music_number
+            FROM playlist_music
+            WHERE user_id=$1 AND playlist_id=$2
+          )
+          UPDATE playlist_music
+          SET music_number=numbered_rows.new_music_number
+          FROM numbered_rows
+          WHERE user_id=$3 AND playlist_id=$4 AND playlist_music.music_id=numbered_rows.music_id
+        SQL
+        cnn.exec query, user_id, playlist_id, user_id, playlist_id
+
+        num_music_tracks.times do |i|
+          music_numbers_ptr[i] = i * 256
+        end
       end
 
       # Set music number of selected music track to its chosen value
-      cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", music_number, user_id, playlist_id, music_id
+      new_music_number = if music_number == 1
+        music_numbers_ptr[0] - 256
+      elsif music_number == num_music_tracks
+        music_numbers_ptr[num_music_tracks - 1] + 256
+      else
+        (music_numbers_ptr[music_number - 2] + music_numbers_ptr[music_number - 1]) >> 1
+      end
+
+      cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", new_music_number, user_id, playlist_id, music_id
     end
 
     nil
@@ -198,20 +229,8 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # playlist_repository.remove_music("user_id", "playlist_id", "music_id") # => true if the user originally had "music_id" in their playlist with the given playlist id
   # ```
   def remove_music(user_id : String, playlist_id : String, music_id : String) : Bool
-    @db.transaction do |tx|
-      cnn = tx.connection
+    result = @db.exec "DELETE FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id
 
-      music_number = nil
-      cnn.query("DELETE FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3 RETURNING music_number", user_id, playlist_id, music_id) do |rs|
-        rs.each do
-          music_number = rs.read(Int32)
-        end
-      end
-      return false if music_number.nil?
-
-      cnn.exec "UPDATE playlist_music SET music_number = music_number - 1 WHERE user_id=$1 AND playlist_id=$2 AND music_number > $3", user_id, playlist_id, music_number
-    end
-
-    true
+    result.rows_affected != 0
   end
 end
