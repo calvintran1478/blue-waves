@@ -120,9 +120,9 @@ module Validators::PlaylistValidator
     music_number = IO::ByteFormat::NetworkEndian.decode(Int32, request_body) rescue nil
 
     # Check if the provided music number is valid
-    if music_number.nil? || music_number <= 0
+    if music_number.nil? || music_number < -1
       context.response.status = HTTP::Status::BAD_REQUEST
-      context.response.output << "Music number must be a positive integer"
+      context.response.output << "Music number must be greater than or equal to -1"
       return
     end
 

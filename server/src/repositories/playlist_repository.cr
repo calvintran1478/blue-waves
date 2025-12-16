@@ -149,65 +149,132 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # Updates the position of a music track in the user's playlist.
   #
   # ```
-  # playlist_repository.update_music("user_id", "playlist_id", "music_id", music_number) # => true if update was successful
+  # playlist_repository.update_music("user_id", "playlist_id", "music_id", music_number, context)
   # ```
-  def update_music(user_id : String, playlist_id : String, music_id : String, music_number : Int32) : (String | Nil)
-    @db.transaction do |tx|
-      cnn = tx.connection
-
-      # Get information about existing music numbers
-      original_music_number = nil
-      music_numbers = [] of Int32
-      cnn.query("SELECT music_id, music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
-        rs.each do
-          mi, mn = rs.read(String, Int32)
-          music_numbers << mn
-          original_music_number = music_numbers.size if mi == music_id
-        end
-      end
-      return "Music number exceeds playlist length" if music_number > music_numbers.size
-      return "Music not found within playlist" if original_music_number.nil?
-
-      # If no change is needed return early
-      return if music_number == original_music_number
-
-      # Renormalize music numbers if needed
-      music_numbers_ptr = music_numbers.to_unsafe
-      num_music_tracks = music_numbers.size
-
-      renormalize_required = (music_number == 1 && Int32::MIN <= music_numbers_ptr[0] < Int32::MIN + 256) || (music_number == num_music_tracks && Int32::MAX - 256 < music_numbers_ptr[num_music_tracks - 1] <= Int32::MAX) || (music_numbers_ptr[music_number - 2] == music_numbers_ptr[music_number - 1] - 1)
-      if renormalize_required
-        query = <<-SQL
-          WITH numbered_rows AS(
-            SELECT music_id, ((ROW_NUMBER() OVER (ORDER BY music_number)) - 1) * 256 as new_music_number
-            FROM playlist_music
-            WHERE user_id=$1 AND playlist_id=$2
+  def update_music(user_id : String, playlist_id : String, music_id : String, music_number : Int32, context : HTTP::Server::Context) : Nil
+    # Check for relative update: 0 -> swap with next, -1 -> swap with previous
+    if music_number < 1
+      # Select query based on which track to swap with
+      query = if music_number == 0
+        <<-SQL
+          WITH swap_targets AS(
+            SELECT pm2.music_id, pm2.music_number
+            FROM playlist_music pm2
+            WHERE user_id=$4 AND playlist_id=$5 AND music_number >= (SELECT pm1.music_number FROM playlist_music pm1 WHERE pm1.user_id=$1 AND pm1.playlist_id=$2 AND pm1.music_id=$3)
+            ORDER BY music_number
+            LIMIT 2
+          ),
+          swap_transformation AS(
+            SELECT s1.music_id, s2.music_number
+            FROM swap_targets s1 INNER JOIN swap_targets s2 ON s1.music_id <> s2.music_id
           )
           UPDATE playlist_music
-          SET music_number=numbered_rows.new_music_number
-          FROM numbered_rows
-          WHERE user_id=$3 AND playlist_id=$4 AND playlist_music.music_id=numbered_rows.music_id
+          SET music_number=swap_transformation.music_number
+          FROM swap_transformation
+          WHERE playlist_music.user_id=$6 AND playlist_music.playlist_id=$7 AND playlist_music.music_id=swap_transformation.music_id
         SQL
-        cnn.exec query, user_id, playlist_id, user_id, playlist_id
-
-        num_music_tracks.times do |i|
-          music_numbers_ptr[i] = i * 256
-        end
-      end
-
-      # Set music number of selected music track to its chosen value
-      new_music_number = if music_number == 1
-        music_numbers_ptr[0] - 256
-      elsif music_number == num_music_tracks
-        music_numbers_ptr[num_music_tracks - 1] + 256
       else
-        (music_numbers_ptr[music_number - 2] + music_numbers_ptr[music_number - 1]) >> 1
+        <<-SQL
+          WITH swap_targets AS(
+            SELECT pm2.music_id, pm2.music_number
+            FROM playlist_music pm2
+            WHERE user_id=$4 AND playlist_id=$5 AND music_number <= (SELECT pm1.music_number FROM playlist_music pm1 WHERE pm1.user_id=$1 AND pm1.playlist_id=$2 AND pm1.music_id=$3)
+            ORDER BY music_number DESC
+            LIMIT 2
+          ),
+          swap_transformation AS(
+            SELECT s1.music_id, s2.music_number
+            FROM swap_targets s1 INNER JOIN swap_targets s2 ON s1.music_id <> s2.music_id
+          )
+          UPDATE playlist_music
+          SET music_number=swap_transformation.music_number
+          FROM swap_transformation
+          WHERE playlist_music.user_id=$6 AND playlist_music.playlist_id=$7 AND playlist_music.music_id=swap_transformation.music_id
+        SQL
       end
 
-      cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", new_music_number, user_id, playlist_id, music_id
-    end
+      # Swap music tracks within the playlist
+      result = @db.exec query, user_id, playlist_id, music_id, user_id, playlist_id, user_id, playlist_id
 
-    nil
+      # Check for any update errors
+      if result.rows_affected == 2
+        context.response.status = HTTP::Status::NO_CONTENT
+      elsif contains_music_id(user_id, playlist_id, music_id)
+        context.response.status = HTTP::Status::CONFLICT
+        context.response.output << "Music position cannot be incremented/decremented further"
+      else
+        context.response.status = HTTP::Status::NOT_FOUND
+        context.response.output << "Music not found within playlist"
+      end
+    else
+      @db.transaction do |tx|
+        # Alias transaction connection for convenience
+        cnn = tx.connection
+
+        # Get information about existing music numbers
+        original_music_number = nil
+        music_numbers = [] of Int32
+        cnn.query("SELECT music_id, music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
+          rs.each do
+            mi, mn = rs.read(String, Int32)
+            music_numbers << mn
+            original_music_number = music_numbers.size if mi == music_id end
+        end
+
+        # Check for any errors
+        if music_number > music_numbers.size
+          context.response.status = HTTP::Status::CONFLICT
+          context.response.output << "Music number exceeds playlist length"
+          return
+        elsif original_music_number.nil?
+          context.response.status = HTTP::Status::NOT_FOUND
+          context.response.output << "Music not found within playlist"
+          return
+        end
+
+        # If no change is needed return early
+        if music_number == original_music_number
+          context.response.status = HTTP::Status::NO_CONTENT
+          return
+        end
+
+        # Renormalize music numbers if needed
+        music_numbers_ptr = music_numbers.to_unsafe
+        num_music_tracks = music_numbers.size
+        renormalize_required = (music_number == 1 && Int32::MIN <= music_numbers_ptr[0] < Int32::MIN + 256) || (music_number == num_music_tracks && Int32::MAX - 256 < music_numbers_ptr[num_music_tracks - 1] <= Int32::MAX) || (music_numbers_ptr[music_number - 2] == music_numbers_ptr[music_number - 1] - 1)
+
+        if renormalize_required
+          query = <<-SQL
+            WITH numbered_rows AS(
+              SELECT music_id, ((ROW_NUMBER() OVER (ORDER BY music_number)) - 1) * 256 as new_music_number
+              FROM playlist_music
+              WHERE user_id=$1 AND playlist_id=$2
+            )
+            UPDATE playlist_music
+            SET music_number=numbered_rows.new_music_number
+            FROM numbered_rows
+            WHERE user_id=$3 AND playlist_id=$4 AND playlist_music.music_id=numbered_rows.music_id
+          SQL
+          cnn.exec query, user_id, playlist_id, user_id, playlist_id
+
+          num_music_tracks.times do |i|
+            music_numbers_ptr[i] = i * 256
+          end
+        end
+
+        # Set music number of selected music track to its chosen value
+        new_music_number = if music_number == 1
+          music_numbers_ptr[0] - 256
+        elsif music_number == num_music_tracks
+          music_numbers_ptr[num_music_tracks - 1] + 256
+        else
+          (music_numbers_ptr[music_number - 2] + music_numbers_ptr[music_number - 1]) >> 1
+        end
+        cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", new_music_number, user_id, playlist_id, music_id
+
+        context.response.status = HTTP::Status::NO_CONTENT
+      end
+    end
   end
 
   # Deletes a playlist from the user's collection. Returns whether the deletion

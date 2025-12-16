@@ -289,21 +289,15 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Update music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    music_updated_error = "Music not found within playlist"
     if playlist_id.size == PLAYLIST_ID_LENGTH && music_id.size == MUSIC_ID_LENGTH
       playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
       music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
-      music_updated_error = @playlist_repository.update_music(user_id, playlist_id_str, music_id_str, data.music_number)
-    end
-
-    unless music_updated_error.nil?
+      @playlist_repository.update_music(user_id, playlist_id_str, music_id_str, data.music_number, context)
+    else
       context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << music_updated_error
+      context.response.output << "Music not found within playlist"
       return
     end
-
-    # Send success response
-    context.response.status = HTTP::Status::NO_CONTENT
   end
 
   # Deletes a playlist from the user's collection
