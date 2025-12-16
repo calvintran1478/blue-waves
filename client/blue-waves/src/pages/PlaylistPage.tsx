@@ -60,7 +60,7 @@ const PlaylistPage = () => {
         // Encode position as bytes
         const buffer = new ArrayBuffer(4);
         const view = new DataView(buffer);
-        view.setInt32(0, newPosition, false);
+        view.setInt32(0, -1, false);
 
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}/music/${musicId}`, {
             method: "PATCH",
@@ -102,7 +102,7 @@ const PlaylistPage = () => {
         // Encode position as bytes
         const buffer = new ArrayBuffer(4);
         const view = new DataView(buffer);
-        view.setInt32(0, newPosition, false);
+        view.setInt32(0, 0, false);
 
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}/music/${musicId}`, {
             method: "PATCH",
