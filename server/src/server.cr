@@ -50,7 +50,7 @@ rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_bucke
 
 # Initialize repositories
 user_repository = Repositories::UserRepository.new(db)
-music_repository = Repositories::MusicRepository.new(db, music_db, MUSIC_DB_BUCKET)
+music_repository = Repositories::MusicRepository.new(db, music_db, auth_db, MUSIC_DB_BUCKET)
 playlist_repository = Repositories::PlaylistRepository.new(db)
 
 # Initialize resource controllers

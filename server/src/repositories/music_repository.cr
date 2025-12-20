@@ -19,7 +19,7 @@ class Repositories::MusicRepository < Repositories::Repository
 
   DEFAULT_S3_HEADER = Hash(String, String).new
 
-  def initialize(@db : DB::Database, @music_db : Awscr::S3::Client, @bucket_name : String)
+  def initialize(@db : DB::Database, @music_db : Awscr::S3::Client, @cache_db : Redis::PooledClient, @bucket_name : String)
   end
 
   # Returns whether a music file with the given id exists in the user's collection
@@ -152,17 +152,35 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get_cover_art("user_id", "music_id", context)
   # ```
-  def get_cover_art(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context) : Nil
+  def get_cover_art(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context, rate_limit_middleware : Middleware::RateLimitMiddleware) : Nil
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
+
+    # Check for cached value
+    modified_since = context.request.headers["If-Modified-Since"]?
+    unless modified_since.nil?
+      threshold_time = HTTP.parse_time(modified_since)
+      last_modified = @cache_db.get(object_id)
+      if !threshold_time.nil? && !last_modified.nil? && last_modified.to_i64 <= threshold_time.to_unix
+        context.response.status = HTTP::Status::NOT_MODIFIED
+        return
+      end
+    end
+
+    # Perform rate limiting
+    get_cover_art_request_allowed = rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}/cover-art")
+    if !get_cover_art_request_allowed
+      context.response.status = HTTP::Status::TOO_MANY_REQUESTS
+      context.response.output << "Too Many Requests"
+      return
+    end
 
     # Fetch music cover art from storage bucket
     @music_db.get_object(@bucket_name, object_id, DEFAULT_S3_HEADER) do |art_file|
       context.response.headers["Cache-Control"] = "private, no-cache"
 
       # Check for conditional request
-      modified_since = context.request.headers["If-Modified-Since"]?
       not_modified = false
       unless modified_since.nil?
         threshold_time = HTTP.parse_time(modified_since)
@@ -178,6 +196,9 @@ class Repositories::MusicRepository < Repositories::Repository
         context.response.status = HTTP::Status::OK
         IO.copy(art_file.body_io, context.response.output)
       end
+
+      # Cache modified time
+      @cache_db.set(object_id, HTTP.parse_time(art_file.headers["Last-Modified"]).as(Time).to_unix, 432000)
     end
   rescue XML::Error
     context.response.status = HTTP::Status::NOT_FOUND
@@ -258,6 +279,7 @@ class Repositories::MusicRepository < Repositories::Repository
       object_id.initialize_header(bytesize, bytesize)
 
       @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
+      @cach_db.del(object_id)
     end
 
     file_exists

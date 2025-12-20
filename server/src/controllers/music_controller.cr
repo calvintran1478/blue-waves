@@ -187,16 +187,8 @@ struct Controllers::MusicController < Controllers::Controller
     user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
     return if user_id.nil?
 
-    # Perform rate limiting
-    get_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}/cover-art")
-    if !get_cover_art_request_allowed
-      context.response.status = HTTP::Status::TOO_MANY_REQUESTS
-      context.response.output << "Too Many Requests"
-      return
-    end
-
     # Fetch music cover art and write contents to the response body
-    @music_repository.get_cover_art(user_id, music_id, context)
+    @music_repository.get_cover_art(user_id, music_id, context, @rate_limit_middleware)
   end
 
   # Sets the cover art for a music file from the user's collection
