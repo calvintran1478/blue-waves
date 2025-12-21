@@ -279,7 +279,7 @@ class Repositories::MusicRepository < Repositories::Repository
       object_id.initialize_header(bytesize, bytesize)
 
       @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
-      @cach_db.del(object_id)
+      @cache_db.del(object_id)
     end
 
     file_exists
