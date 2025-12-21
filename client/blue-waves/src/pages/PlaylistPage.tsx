@@ -1,10 +1,9 @@
 import { createResource, useContext, createSignal, For, Signal, Show, Suspense } from "solid-js";
-import { A } from "@solidjs/router";
-import { useParams } from "@solidjs/router";
+import { A, useParams } from "@solidjs/router";
+import { Store } from "solid-js/store";
 import { getToken } from "../utils/token"; 
-import { apiDomain, AuthContext } from "../index.tsx";
+import { apiDomain, AuthContext, MusicPlayerStateContext } from "../index.tsx";
 import AddPlaylistMusicModal from "../components/AddPlaylistMusicModal"; 
-import MusicPlayer from "../components/MusicPlayer";
 
 // Expected fields for each music entry
 interface MusicEntry {
@@ -21,9 +20,10 @@ const PlaylistPage = () => {
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
+    const [, setMusicPlayerState] = useContext(MusicPlayerStateContext) as Store<any>;
+   
     const [playlistName, setPlaylistName] = createSignal("");
     const [showAddPlaylistMusicModal, setShowAddPlaylistMusicModal] = createSignal(false);
-    const [showMusicPlayer, setShowMusicPlayer] = createSignal(false);
 
     const [editMode, setEditMode] = createSignal(false);
 
@@ -156,8 +156,6 @@ const PlaylistPage = () => {
 
     const [playlistMusic, modifyPlaylistMusic] = createResource(fetchPlaylist);
 
-    const [musicIndex, setMusicIndex] = createSignal(0);
-
     return (
         <div class="flex">
             <div class="flex flex-col w-1/5 h-screen border-2">
@@ -179,7 +177,7 @@ const PlaylistPage = () => {
                         {(musicEntry, index) => (
                             <div>
                                 <Show when={!editMode()}>
-                                    <button class="flex flex-col justify-center items-start h-16 w-full my-2 border-2" onClick={() => {setMusicIndex(index); setShowMusicPlayer(true)}}>
+                                    <button class="flex flex-col justify-center items-start h-16 w-full my-2 border-2" onClick={() => {setMusicPlayerState("showMusicPlayer", true); setMusicPlayerState("musicList", playlistMusic()); setMusicPlayerState("musicIndex", index)}}>
                                         <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
                                         <h3 class="text-lg">{musicEntry["artist"]}</h3>
                                     </button>
@@ -205,9 +203,6 @@ const PlaylistPage = () => {
                     </For>
                 </Suspense>
             </div>
-            <Show when={showMusicPlayer()}>
-                <MusicPlayer closeCallback={() => {setShowMusicPlayer(false); document.title = "Blue waves"}} musicList={playlistMusic()} musicIndex={musicIndex} setMusicIndex={setMusicIndex}/>
-            </Show>
             <Show when={showAddPlaylistMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
                     <AddPlaylistMusicModal closeCallback={() => setShowAddPlaylistMusicModal(false)} playlistId={playlistId} playlistMusic={playlistMusic} setPlaylistMusic={modifyPlaylistMusic.mutate}/>

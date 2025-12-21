@@ -1,6 +1,7 @@
-import { createSignal, useContext, Show, Signal } from "solid-js";
+import { createSignal, useContext, Show, Signal, createEffect } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { apiDomain, AuthContext } from "../index.tsx"; 
+import { Store } from "solid-js/store";
+import { apiDomain, AuthContext, MusicPlayerStateContext } from "../index.tsx"; 
 
 const LoginPage = () => {
     document.title = "Blue waves";
@@ -13,7 +14,9 @@ const LoginPage = () => {
 
     const navigate = useNavigate();
 
-    const [_, setToken] = useContext(AuthContext) as Signal<string>;
+    const [, setToken] = useContext(AuthContext) as Signal<string>;
+
+    const [, setMusicPlayerState] = useContext(MusicPlayerStateContext) as Store<any>;
 
     const loginUser = async (event: Event) => {
         // Prevent refresh
@@ -38,6 +41,8 @@ const LoginPage = () => {
             setLoginError(await response.text());
         }
     }
+
+    createEffect(() => setMusicPlayerState("showMusicPlayer", false))
 
     return (
         <div class="flex justify-center items-center w-screen h-screen">

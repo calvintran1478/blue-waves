@@ -1,6 +1,7 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show, useContext } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { apiDomain } from "../index.tsx";
+import { Store } from "solid-js/store";
+import { apiDomain, MusicPlayerStateContext } from "../index.tsx";
 
 const RegisterPage = () => {
     document.title = "Blue waves";
@@ -12,6 +13,8 @@ const RegisterPage = () => {
 
     const [registerLoading, setRegisterLoading] = createSignal(false);
     const [registerError, setRegisterError] = createSignal("");
+
+    const [, setMusicPlayerState] = useContext(MusicPlayerStateContext) as Store<any>;
 
     const navigate = useNavigate();
 
@@ -34,6 +37,8 @@ const RegisterPage = () => {
         setRegisterLoading(false);
         setRegisterError(await response.text());
     }
+
+    createEffect(() => setMusicPlayerState("showMusicPlayer", false))
 
     return (
         <div class="flex justify-center items-center w-screen h-screen">

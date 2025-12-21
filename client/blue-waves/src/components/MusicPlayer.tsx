@@ -1,20 +1,13 @@
-import { createSignal, useContext, Signal, Accessor, Setter, createEffect } from "solid-js";
-import { apiDomain, AuthContext } from "../index.tsx"; 
+import { useContext, Signal, createEffect, Show, createSignal } from "solid-js";
+import { Store } from "solid-js/store";
+import { apiDomain, AuthContext, MusicPlayerStateContext } from "../index.tsx"; 
 import { getToken } from "../utils/token";
 import { openDB } from "idb";
 import soundPng from "../assets/sound.png";
 import mutePng from "../assets/mute.png";
 
-interface MusicEntry {
-    music_id: string,
-    title: string,
-    artist: string
-}
-
-const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[], musicIndex: Accessor<number>, setMusicIndex: Setter<number> }) => {
-
+const MusicPlayer = () => {
     const [musicFile, setMusicFile] = createSignal("");
-
     const [coverArtFile, setCoverArtFile] = createSignal("");
 
     const [playing, setPlaying] = createSignal(true);
@@ -24,14 +17,15 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     const [endTime, setEndTime] = createSignal("00:00");
 
     const [mute, setMute] = createSignal(false);
-    let previousVolume = "0";
-
+    
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
+    const [store, setStore] = useContext(MusicPlayerStateContext) as Store<any>;
 
-    const musicId = () => props.musicList[props.musicIndex()!]["music_id"] // Derived signal
-    const musicTitle = () => props.musicList[props.musicIndex()!]["title"] // Derived signal
-    const musicArtist = () => props.musicList[props.musicIndex()!]["artist"] // Derived signal
+    const musicId = () => store.musicList[store.musicIndex]["music_id"] // Derived signal
+    const musicTitle = () => store.musicList[store.musicIndex]["title"] // Derived signal
+    const musicArtist = () => store.musicList[store.musicIndex]["artist"] // Derived signal
 
+    let previousVolume = "0";
     let audioPlayer!: HTMLAudioElement;
     let seekControl!: HTMLInputElement;
     let volumeControl!: HTMLInputElement;
@@ -156,10 +150,12 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
 
     // Fetch music and cover art file whenever musid id updates and update document title
     createEffect(() => {
-        fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string));
-        fetchCoverArtFile(musicId()).then((af) => setCoverArtFile(af as string));
-        setPlaying(true);
-        document.title = `${musicTitle()} - Blue waves`;
+        if (musicId() !== "") {
+            fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string));
+            fetchCoverArtFile(musicId()).then((af) => setCoverArtFile(af as string));
+            setPlaying(true);
+            document.title = `${musicTitle()} - Blue waves`;
+        }
     })
 
     const playPause = () => {
@@ -172,11 +168,11 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     }
 
     const playPrev = async () => {
-        props.setMusicIndex(props.musicIndex() === 0 ? props.musicList.length - 1 : props.musicIndex()! - 1)
+        setStore("musicIndex", store.musicIndex === 0 ? store.musicList.length - 1 : store.musicIndex - 1);
     }
 
     const playNext = async () => {
-        props.setMusicIndex(props.musicIndex() === props.musicList.length - 1 ? 0 : props.musicIndex()! + 1)
+        setStore("musicIndex", store.musicIndex === store.musicList.length - 1 ? 0 : store.musicIndex + 1);
     }
 
     const handleMute = () => {
@@ -212,31 +208,33 @@ const MusicPlayer = (props: { closeCallback: () => void, musicList: MusicEntry[]
     }
 
     return (
-        <div class="flex fixed bottom-0 w-screen h-20 border justify-between items-center bg-gray-100">
+        <Show when={store.showMusicPlayer}>
+            <div class="flex fixed bottom-0 w-screen h-20 border justify-between items-center bg-gray-100">
             <audio ref={audioPlayer} autoplay={true} onTimeUpdate={handleTimeUpdate} onEnded={playNext} src={musicFile()}></audio>
-            <div class="flex items-center ml-4">
-                <img class="w-16 h-16 rounded" src={coverArtFile()}/>
-                <div class="mx-4">
-                    <p class="font-semibold">{musicTitle()}</p>
-                    <p>{musicArtist()}</p>
+                <div class="flex items-center ml-4">
+                    <img class="w-16 h-16 rounded object-cover" src={coverArtFile()}/>
+                    <div class="mx-4">
+                        <p class="font-semibold">{musicTitle()}</p>
+                        <p>{musicArtist()}</p>
+                    </div>
+                    <p>{currentTime()}</p>
+                    <input class="mx-2 w-40" ref={seekControl} onInput={() => setSeeking(true)} onMouseUp={() => setSeeking(false)} onChange={(event) => {audioPlayer.currentTime = parseInt(event.target.value)}} type="range" id="seek" name="seek" value={0} min="0" max={audioPlayer.duration}/>
+                    <p>{endTime()}</p>
                 </div>
-                <p>{currentTime()}</p>
-                <input class="mx-2 w-40" ref={seekControl} onInput={() => setSeeking(true)} onMouseUp={() => setSeeking(false)} onChange={(event) => {audioPlayer.currentTime = parseInt(event.target.value)}} type="range" id="seek" name="seek" value={0} min="0" max={audioPlayer.duration}/>
-                <p>{endTime()}</p>
+                <div>
+                    <button onClick={playPrev}>prev</button>
+                    <button class="mx-12" onClick={playPause}>{playing() ? "pause" : "play"}</button>
+                    <button onClick={playNext}>next</button>
+                </div>
+                <div class="flex">
+                    <button onClick={handleMute}>
+                        <img class="w-8 h-8 mx-4" src={mute() ? mutePng : soundPng}/>
+                    </button>
+                    <input class="w-40" ref={volumeControl} onInput={handleVolumeUpdate} type="range" id="sound" name="sound" step="0.02" value={localStorage.getItem("volume") ?? "1"} min="0" max="1"/>
+                </div>
+                <button class="mr-4" onClick={() => {setStore("showMusicPlayer", false); document.title = "Blue waves"}}>close</button>
             </div>
-            <div>
-                <button onClick={playPrev}>prev</button>
-                <button class="mx-12" onClick={playPause}>{playing() ? "pause" : "play"}</button>
-                <button onClick={playNext}>next</button>
-            </div>
-            <div class="flex">
-                <button onClick={handleMute}>
-                    <img class="w-8 h-8 mx-4" src={mute() ? mutePng : soundPng}/>
-                </button>
-                <input class="w-40" ref={volumeControl} onInput={handleVolumeUpdate} type="range" id="sound" name="sound" step="0.02" value={localStorage.getItem("volume") ?? "1"} min="0" max="1"/>
-            </div>
-            <button class="mr-4" onClick={props.closeCallback}>close</button>
-        </div>
+        </Show>
     )
 }
 
