@@ -46,8 +46,8 @@ render(
         <Router root={(props) => (
             <AuthProvider>
                 <MusicPlayerStateProvider>
-                    {props.children}
                     <MusicPlayer/>
+                    {props.children}
                 </MusicPlayerStateProvider>
             </AuthProvider>
         )}>
