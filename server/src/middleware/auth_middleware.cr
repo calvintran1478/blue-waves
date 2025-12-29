@@ -20,18 +20,18 @@ class Middleware::AuthMiddleware
   # user_id_buffer = uninitialized UInt8[49]
   # user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
   # ```
-  def get_user(context : HTTP::Server::Context, user_id_buffer : UInt8*) : (Bytes | Nil)
+  def get_user(context : HTTP::Server::Context, user_id_buffer : UInt8*) : Bool
     # Check that the authorization header is included
     auth_header = context.request.headers["Authorization"]?
     if auth_header.nil? || auth_header.size != EXPECTED_AUTH_HEADER_SIZE
       context.response.status = HTTP::Status::UNAUTHORIZED
-      return
+      return false
     end
 
     # Extract access token
     if !auth_header.starts_with?("Bearer ")
       context.response.status = HTTP::Status::UNAUTHORIZED
-      return
+      return false
     end
     access_token = auth_header.unsafe_byte_slice(7)
 
@@ -40,16 +40,16 @@ class Middleware::AuthMiddleware
     black_list_token_id = Utils::Str.stringify("black-list:", access_token, string_buffer: black_list_token_id_buffer.to_unsafe)
     if @auth_db.exists(black_list_token_id) == 1
       context.response.status = HTTP::Status::UNAUTHORIZED
-      return
+      return false
     end
 
     # Parse access token and get user id
     payload = Utils::Token.decode_access_token(access_token, @API_SECRET, user_id_buffer)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
-      return
+      return false
     end
 
-    payload.user_id
+    true
   end
 end

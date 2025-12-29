@@ -69,8 +69,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def add_playlist(context : HTTP::Server::Context) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Validate user input
     add_playlist_request_buffer = uninitialized UInt8[ADD_PLAYLIST_REQUEST_BUFFER_SIZE]
@@ -101,8 +100,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def add_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Validate user input
     add_playlist_music_request_buffer = uninitialized UInt8[ADD_PLAYLIST_MUSIC_REQUEST_BUFFER_SIZE]
@@ -147,8 +145,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def get_playlists(context : HTTP::Server::Context) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Send music data
     user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
@@ -165,8 +162,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def get_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Retreive playlist based on playlist id
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
@@ -186,8 +182,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def update_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Validate user input
     update_playlist_request_buffer = uninitialized UInt8[UPDATE_PLAYLIST_REQUEST_BUFFER_SIZE]
@@ -221,8 +216,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def update_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes, music_id : Bytes) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Validate user input
     data = validate_update_playlist_music_request(context)
@@ -245,8 +239,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def delete_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Delete playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
@@ -269,8 +262,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   def delete_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes, music_id : Bytes) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    user_id = @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
-    return if user_id.nil?
+    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Remove music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
