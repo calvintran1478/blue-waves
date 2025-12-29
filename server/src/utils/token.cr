@@ -7,10 +7,10 @@ module Utils::Token
 
   # Claims stored within an access token
   struct AccessClaims
-    getter user_id : Bytes
+    getter user_id : Pointer(UInt8)
     getter exp : Int64
 
-    def initialize(@user_id : Bytes, @exp : Int64)
+    def initialize(@user_id : Pointer(UInt8), @exp : Int64)
     end
 
     # Writes the contents of these claims to the given buffer and returns the
@@ -18,8 +18,8 @@ module Utils::Token
     #
     # The provided buffer must be large enough to store 44 bytes
     def to_bytes(buffer : UInt8*) : Bytes
-      buffer.copy_from(@user_id.to_unsafe, @user_id.bytesize)
-      IO::ByteFormat::NetworkEndian.encode(@exp, Bytes.new(buffer + @user_id.bytesize, sizeof(Int64)))
+      buffer.copy_from(@user_id, USER_ID_LENGTH)
+      IO::ByteFormat::NetworkEndian.encode(@exp, Bytes.new(buffer + USER_ID_LENGTH, sizeof(Int64)))
 
       Bytes.new(buffer, ACCESS_CLAIMS_SIZE)
     end
@@ -32,8 +32,8 @@ module Utils::Token
     # The string contents of the user id is written to the provided user id
     # buffer, which must be large enough to store 49 bytes
     def AccessClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*) : AccessClaims
-      user_id = Bytes.new(user_id_buffer.as(String).to_unsafe, USER_ID_LENGTH)
-      user_id.to_unsafe.copy_from(bytes.to_unsafe, USER_ID_LENGTH)
+      user_id = user_id_buffer.as(String).to_unsafe
+      user_id.copy_from(bytes.to_unsafe, USER_ID_LENGTH)
       exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + USER_ID_LENGTH, sizeof(Int64)))
 
       AccessClaims.new(user_id, exp)
@@ -42,12 +42,12 @@ module Utils::Token
 
   # Claims stored within a refresh token
   struct RefreshClaims
-    getter user_id : String
+    getter user_id : Pointer(UInt8)
     getter token_family_id : String
     getter sequence_number : Int32
     getter exp : Int64
 
-    def initialize(@user_id : String, @token_family_id : String, @sequence_number : Int32, @exp : Int64)
+    def initialize(@user_id : Pointer(UInt8), @token_family_id : String, @sequence_number : Int32, @exp : Int64)
     end
 
     # Writes the contents of these claims to the given buffer and returns the
@@ -57,11 +57,11 @@ module Utils::Token
     def to_bytes(buffer : UInt8*) : Bytes
       curr_buffer = buffer
 
-      curr_buffer.copy_from(@user_id.to_unsafe, @user_id.bytesize)
-      curr_buffer += @user_id.bytesize
+      curr_buffer.copy_from(@user_id, USER_ID_LENGTH)
+      curr_buffer += USER_ID_LENGTH
 
-      curr_buffer.copy_from(@token_family_id.to_unsafe, @token_family_id.bytesize)
-      curr_buffer += @token_family_id.bytesize
+      curr_buffer.copy_from(@token_family_id.to_unsafe, TOKEN_FAMILY_ID_LENGTH)
+      curr_buffer += TOKEN_FAMILY_ID_LENGTH
 
       IO::ByteFormat::NetworkEndian.encode(@sequence_number, Bytes.new(curr_buffer, sizeof(Int32)))
       curr_buffer += sizeof(Int32)
@@ -84,7 +84,8 @@ module Utils::Token
     def RefreshClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : RefreshClaims
       curr_buffer = bytes.to_unsafe
 
-      user_id = Utils::Str.stringify(Bytes.new(curr_buffer, USER_ID_LENGTH), user_id_buffer)
+      user_id = user_id_buffer.as(String).to_unsafe
+      user_id.copy_from(curr_buffer, USER_ID_LENGTH)
       curr_buffer += USER_ID_LENGTH
 
       token_family_id = Utils::Str.stringify(Bytes.new(curr_buffer, TOKEN_FAMILY_ID_LENGTH), token_family_id_buffer)
