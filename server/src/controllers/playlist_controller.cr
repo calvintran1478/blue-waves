@@ -77,7 +77,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Check if playlist with the given name already exists
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     if @playlist_repository.exists_by_name(user_id_str, data.playlist_name)
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << "Playlist with the given name already exists"
@@ -108,7 +108,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Check if music exists
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     unless @music_repository.exists_by_id(user_id_str, data.music_id)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -148,7 +148,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Send music data
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
     @playlist_repository.list(user_id_str, context)
@@ -166,7 +166,7 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Retreive playlist based on playlist id
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
     unless @playlist_repository.get(user_id_str, playlist_id_str, context)
       context.response.status = HTTP::Status::NOT_FOUND
@@ -191,7 +191,7 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Update playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
     if @playlist_repository.exists_by_name_excluding_id(user_id_str, data.playlist_name, playlist_id_str)
       context.response.status = HTTP::Status::CONFLICT
@@ -225,7 +225,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Update music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
 
@@ -243,7 +243,7 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Delete playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
     unless @playlist_repository.delete(user_id_str, playlist_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
@@ -267,7 +267,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Remove music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, USER_ID_LENGTH)
+    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
 

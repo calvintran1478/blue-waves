@@ -1,5 +1,7 @@
+require "./constants"
 
 module Utils::Str
+  include Utils::Constants
   extend self
 
   # Concatenates the given sources of bytes into a string.
@@ -57,7 +59,7 @@ module Utils::Str
     string_buffer
   end
 
-  # Initializes the given buffer as a string with the provided bytesize
+  # Initializes the given user id bytes as a string
   #
   # This can be used to have the internal buffer of the string be allocated on
   # the stack instead of the heap, reducing pressure placed on the garbage
@@ -66,16 +68,16 @@ module Utils::Str
   # ```
   # require "../utils/env/str"
   #
-  # buffer = uninitialized UInt8[18] # "hello".size + 1 + String::HEADER_SIZE
-  # temp_buffer = buffer.as(String).to_unsafe
-  # temp_buffer.copy_from("hello".to_unsafe, 5)
+  # user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
+  # temp_buffer = user_id_buffer.as(String).to_unsafe
+  # temp_buffer.copy_from("<UUID>", USER_ID_LENGTH)
   #
-  # my_string = Utils::Str.finalize_string(buffer.to_unsafe, 5)
+  # user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
   # ```
-  def finalize_string(string_buffer : UInt8*, bytesize : Int32) : String
-    string_buffer = string_buffer.as(String)
-    string_buffer.to_unsafe[bytesize] = 0_u8
-    string_buffer.initialize_header(bytesize, bytesize)
+  def finalize_user_id(user_id_buffer : UInt8*) : String
+    string_buffer = user_id_buffer.as(String)
+    string_buffer.to_unsafe[USER_ID_LENGTH] = 0_u8
+    string_buffer.initialize_header(USER_ID_LENGTH, USER_ID_LENGTH)
 
     string_buffer
   end
