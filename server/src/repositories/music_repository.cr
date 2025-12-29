@@ -4,6 +4,7 @@ require "awscr-s3"
 require "./repository"
 require "../schemas/music_schemas"
 require "../utils/str"
+require "../utils/constants"
 
 # Provides an easy-to-use interface for accessing the music table in the database.
 #
@@ -11,13 +12,7 @@ require "../utils/str"
 # music table should be made though a MusicRepository object.
 class Repositories::MusicRepository < Repositories::Repository
   include Schemas::MusicSchemas
-
-  USER_ID_LENGTH = 36
-  MUSIC_ID_LENGTH = 22
-  MUSIC_FILE_ID_STRING_LENGTH = 72 # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
-  COVER_ART_ID_STRING_LENGTH = 82  # USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + 10 + 1 + String::HEADER_SIZE
-
-  DEFAULT_S3_HEADER = Hash(String, String).new
+  include Utils::Constants
 
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client, @cache_db : Redis::PooledClient, @bucket_name : String)
   end

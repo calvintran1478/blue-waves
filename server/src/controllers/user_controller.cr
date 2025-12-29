@@ -19,12 +19,6 @@ struct Controllers::UserController < Controllers::Controller
   @BCRYPT_COST : Int32
   @API_SECRET : String
 
-  USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
-  TOKEN_FAMILY_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
-
-  EXPECTED_AUTH_HEADER_SIZE = 109 # 7 + ACCESS_TOKEN_SIZE
-  BLACK_LIST_TOKEN_ID_STRING_LENGTH = 126 # 11 + ACCESS_TOKEN_SIZE + 1 + String::HEADER_SIZE
-
   def initialize(@user_repository : Repositories::UserRepository, @auth_db : Redis::PooledClient, @rate_limit_middleware : Middleware::RateLimitMiddleware)
     @prefix_length = "/api/v1/users".size
 

@@ -1,14 +1,14 @@
 require "http/server"
 require "../utils/str"
 require "../utils/token"
+require "../utils/constants"
 
 # Middleware for authenticating user requests made to a protected endpoint
 class Middleware::AuthMiddleware
+  include Utils::Constants
+
   def initialize(@auth_db : Redis::PooledClient, @API_SECRET : String)
   end
-
-  EXPECTED_AUTH_HEADER_SIZE = 109 # 7 + ACCESS_TOKEN_SIZE
-  BLACK_LIST_TOKEN_ID_STRING_LENGTH = 126 # 11 + ACCESS_TOKEN_SIZE + 1 + String::HEADER_SIZE
 
   # Retreives user id from the given HTTP server context.
   #

@@ -1,11 +1,9 @@
 require "./str"
+require "./constants"
 
 module Utils::Token
+  include Utils::Constants
   extend self
-
-  UUID_LENGTH = 36
-  ACCESS_CLAIMS_SIZE = 44 # UUID_LENGTH + 8
-  REFRESH_CLAIMS_SIZE = 84 # UUID_LENGTH + UUID_LENGTH + 4 + 8
 
   # Claims stored within an access token
   struct AccessClaims
@@ -34,9 +32,9 @@ module Utils::Token
     # The string contents of the user id is written to the provided user id
     # buffer, which must be large enough to store 49 bytes
     def AccessClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*) : AccessClaims
-      user_id = Bytes.new(user_id_buffer.as(String).to_unsafe, UUID_LENGTH)
-      user_id.to_unsafe.copy_from(bytes.to_unsafe, UUID_LENGTH)
-      exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + UUID_LENGTH, sizeof(Int64)))
+      user_id = Bytes.new(user_id_buffer.as(String).to_unsafe, USER_ID_LENGTH)
+      user_id.to_unsafe.copy_from(bytes.to_unsafe, USER_ID_LENGTH)
+      exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + USER_ID_LENGTH, sizeof(Int64)))
 
       AccessClaims.new(user_id, exp)
     end
@@ -86,11 +84,11 @@ module Utils::Token
     def RefreshClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : RefreshClaims
       curr_buffer = bytes.to_unsafe
 
-      user_id = Utils::Str.stringify(Bytes.new(curr_buffer, UUID_LENGTH), user_id_buffer)
-      curr_buffer += UUID_LENGTH
+      user_id = Utils::Str.stringify(Bytes.new(curr_buffer, USER_ID_LENGTH), user_id_buffer)
+      curr_buffer += USER_ID_LENGTH
 
-      token_family_id = Utils::Str.stringify(Bytes.new(curr_buffer, UUID_LENGTH), token_family_id_buffer)
-      curr_buffer += UUID_LENGTH
+      token_family_id = Utils::Str.stringify(Bytes.new(curr_buffer, TOKEN_FAMILY_ID_LENGTH), token_family_id_buffer)
+      curr_buffer += TOKEN_FAMILY_ID_LENGTH
 
       sequence_number = IO::ByteFormat::NetworkEndian.decode(Int32, Bytes.new(curr_buffer, sizeof(Int32)))
       curr_buffer += sizeof(Int32)

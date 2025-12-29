@@ -29,19 +29,12 @@ end
 # Load environment
 Utils::Env.load_env() if host == "127.0.0.1"
 
-DB_CONN = ENV["DB_CONN"]
-AUTH_DB_CONN = ENV["AUTH_DB_CONN"]
-
-MUSIC_DB_LOCATION = ENV["MUSIC_DB_LOCATION"]
-MUSIC_DB_KEY = ENV["MUSIC_DB_KEY"]
-MUSIC_DB_SECRET = ENV["MUSIC_DB_SECRET"]
-MUSIC_DB_ENDPOINT = ENV["MUSIC_DB_ENDPOINT"]
-MUSIC_DB_BUCKET = ENV["MUSIC_DB_BUCKET"]
-
 # Connect to database
-db = DB.open(DB_CONN)
-auth_db = Redis::PooledClient.new(url: AUTH_DB_CONN)
-music_db = Awscr::S3::Client.new(MUSIC_DB_LOCATION, MUSIC_DB_KEY, MUSIC_DB_SECRET, endpoint: MUSIC_DB_ENDPOINT)
+db = DB.open(ENV["DB_CONN"])
+auth_db = Redis::PooledClient.new(url: ENV["AUTH_DB_CONN"])
+music_db = Awscr::S3::Client.new(
+  ENV["MUSIC_DB_LOCATION"], ENV["MUSIC_DB_KEY"], ENV["MUSIC_DB_SECRET"], endpoint: ENV["MUSIC_DB_ENDPOINT"]
+)
 
 # Initialize middleware
 auth_middleware = Middleware::AuthMiddleware.new(auth_db, ENV["API_SECRET"])
@@ -50,7 +43,7 @@ rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_bucke
 
 # Initialize repositories
 user_repository = Repositories::UserRepository.new(db)
-music_repository = Repositories::MusicRepository.new(db, music_db, auth_db, MUSIC_DB_BUCKET)
+music_repository = Repositories::MusicRepository.new(db, music_db, auth_db, ENV["MUSIC_DB_BUCKET"])
 playlist_repository = Repositories::PlaylistRepository.new(db)
 
 # Initialize resource controllers

@@ -1,9 +1,8 @@
+require "../utils/constants"
 
 module Validators::PlaylistValidator
   include Schemas::PlaylistSchemas
-
-  MAX_PLAYLIST_NAME_LENGTH = 80
-  MUSIC_ID_LENGTH = 22
+  include Utils::Constants
 
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
     curr_buffer = Bytes.new(buffer, limit)

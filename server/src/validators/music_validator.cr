@@ -2,30 +2,11 @@ require "http"
 require "http/server"
 require "http/status"
 require "../schemas/music_schemas"
+require "../utils/constants"
 
 module Validators::MusicValidator
   include Schemas::MusicSchemas
-
-  MAX_MUSIC_FILE_SIZE = 25_000_000 # 25,000,000 bytes, or 25MB
-  MAX_COVER_ART_FILE_SIZE = 8_000_000 # 8,000,000 bytes, or 8MB
-
-  MAX_TITLE_LENGTH = 150
-  MAX_ARTIST_LENGTH = 100
-
-  MAX_TITLE_STRING_LENGTH = 163 # MAX_TITLE_LENGTH + 1 + String::HEADER_SIZE
-  MAX_ARTIST_STRING_LENGTH = 113 # MAX_ARTIST_LENGTH + 1 + String::HEADER_SIZE
-
-  PNG_HEADER = UInt8.static_array(137, 80, 78, 71, 13, 10, 26, 10)
-  PNG_IMAGE_END = UInt8.static_array(73, 69, 78, 68, 174, 66, 96, 130)
-
-  JPEG_HEADER = UInt8.static_array(255, 216)
-  JPEG_IMAGE_END = UInt8.static_array(255, 217)
-
-  OGG_HEADER = UInt8.static_array(79, 103, 103, 83)
-
-  MP3_HEADER = UInt8.static_array(73, 68, 51, 3)
-
-  UPDATE_MUSIC_WORK_BUFFER_SIZE = 254
+  include Utils::Constants
 
   private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
     curr_buffer = Bytes.new(buffer, limit)

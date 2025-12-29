@@ -1,17 +1,11 @@
 require "http/server"
 require "http/status"
 require "../schemas/user_schemas"
+require "../utils/constants"
 
 module Validators::UserValidator
   include Schemas::UserSchemas
-
-  MAX_EMAIL_LENGTH = 60
-
-  MIN_PASSWORD_LENGTH = 8
-  MAX_PASSWORD_LENGTH = 71
-
-  MAX_FIRST_NAME_LENGTH = 50
-  MAX_LAST_NAME_LENGTH = 50
+  include Utils::Constants
 
   # Validates POST requests sent to api/v1/users when registering an account.
   #
