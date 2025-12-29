@@ -45,13 +45,36 @@ module Utils::Str
   # ```
   def stringify(value : Bytes, string_buffer : UInt8*) : String
     # Copy bytes over and terminate content with a null byte
-    buffer = string_buffer.as(String).to_unsafe
     bytesize = value.bytesize
+    string_buffer = string_buffer.as(String)
+    buffer = string_buffer.to_unsafe
     buffer.copy_from(value.to_unsafe, bytesize)
     buffer[bytesize] = 0_u8
 
     # Initialize string header
+    string_buffer.initialize_header(bytesize, bytesize)
+
+    string_buffer
+  end
+
+  # Initializes the given buffer as a string with the provided bytesize
+  #
+  # This can be used to have the internal buffer of the string be allocated on
+  # the stack instead of the heap, reducing pressure placed on the garbage
+  # collector
+  #
+  # ```
+  # require "../utils/env/str"
+  #
+  # buffer = uninitialized UInt8[18] # "hello".size + 1 + String::HEADER_SIZE
+  # temp_buffer = buffer.as(String).to_unsafe
+  # temp_buffer.copy_from("hello".to_unsafe, 5)
+  #
+  # my_string = Utils::Str.finalize_string(buffer.to_unsafe, 5)
+  # ```
+  def finalize_string(string_buffer : UInt8*, bytesize : Int32) : String
     string_buffer = string_buffer.as(String)
+    string_buffer.to_unsafe[bytesize] = 0_u8
     string_buffer.initialize_header(bytesize, bytesize)
 
     string_buffer
@@ -73,7 +96,8 @@ module Utils::Str
   # ```
   def stringify(*values : (Bytes | String), string_buffer : UInt8*) : String
     # Copy bytes over and terminate content with a null byte
-    buffer = string_buffer.as(String).to_unsafe
+    string_buffer = string_buffer.as(String)
+    buffer = string_buffer.to_unsafe
     curr_buffer = buffer
     bytesize = 0
     values.each do |value|
@@ -85,7 +109,6 @@ module Utils::Str
     buffer[bytesize] = 0_u8
 
     # Initialize string header
-    string_buffer = string_buffer.as(String)
     string_buffer.initialize_header(bytesize, bytesize)
 
     string_buffer

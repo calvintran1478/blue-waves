@@ -9,10 +9,10 @@ module Utils::Token
 
   # Claims stored within an access token
   struct AccessClaims
-    getter user_id : String
+    getter user_id : Bytes
     getter exp : Int64
 
-    def initialize(@user_id : String, @exp : Int64)
+    def initialize(@user_id : Bytes, @exp : Int64)
     end
 
     # Writes the contents of these claims to the given buffer and returns the
@@ -34,7 +34,8 @@ module Utils::Token
     # The string contents of the user id is written to the provided user id
     # buffer, which must be large enough to store 49 bytes
     def AccessClaims.from_bytes(bytes : Bytes, user_id_buffer : UInt8*) : AccessClaims
-      user_id = Utils::Str.stringify(Bytes.new(bytes.to_unsafe, UUID_LENGTH), user_id_buffer)
+      user_id = Bytes.new(user_id_buffer.as(String).to_unsafe, UUID_LENGTH)
+      user_id.to_unsafe.copy_from(bytes.to_unsafe, UUID_LENGTH)
       exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + UUID_LENGTH, sizeof(Int64)))
 
       AccessClaims.new(user_id, exp)

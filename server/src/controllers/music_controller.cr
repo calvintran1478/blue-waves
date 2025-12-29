@@ -11,6 +11,8 @@ require "../utils/str"
 struct Controllers::MusicController < Controllers::Controller
   include Validators::MusicValidator
 
+  UUID_LENGTH = 36
+
   MUSIC_ID_LENGTH = 22
   MUSIC_ID_STRING_LENGTH = 35 # MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
   USER_ID_STRING_LENGTH = 49 # UUID_LENGTH + 1 + String::HEADER_SIZE
@@ -99,7 +101,8 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Add music to the user's collection
-    music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, data.music_file_type, data.art_file_type, user_id)
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+    music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, data.music_file_type, data.art_file_type, user_id_str)
 
     # Free allocated memory
     LibC.free(data.file_buffer)
@@ -150,9 +153,11 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Send music data
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
-    @music_repository.list(user_id, context, limit_value, offset_value)
+    @music_repository.list(user_id_str, context, limit_value, offset_value)
   end
 
   # Retreives a music file from the user's collection
@@ -213,8 +218,9 @@ struct Controllers::MusicController < Controllers::Controller
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     music_file_exists = false
     if music_id.size == MUSIC_ID_LENGTH
+      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
       music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
-      music_file_exists = @music_repository.exists_by_id(user_id, music_id_str)
+      music_file_exists = @music_repository.exists_by_id(user_id_str, music_id_str)
     end
 
     unless music_file_exists
@@ -261,8 +267,9 @@ struct Controllers::MusicController < Controllers::Controller
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     music_updated = false
     if music_id.size == MUSIC_ID_LENGTH
+      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
       music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
-      music_updated = @music_repository.update(user_id, music_id_str, data.title, data.artist)
+      music_updated = @music_repository.update(user_id_str, music_id_str, data.title, data.artist)
     end
 
     unless music_updated
@@ -289,8 +296,9 @@ struct Controllers::MusicController < Controllers::Controller
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     file_removed = false
     if music_id.size == MUSIC_ID_LENGTH
+      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
       music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
-      file_removed = @music_repository.delete(user_id, music_id_str)
+      file_removed = @music_repository.delete(user_id_str, music_id_str)
     end
 
     unless file_removed

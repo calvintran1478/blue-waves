@@ -114,7 +114,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get("user_id", "music_id", context)
   # ```
-  def get(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context) : Nil
+  def get(user_id : Bytes, music_id : Bytes, context : HTTP::Server::Context) : Nil
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[MUSIC_FILE_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
@@ -152,7 +152,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get_cover_art("user_id", "music_id", context)
   # ```
-  def get_cover_art(user_id : String, music_id : (String | Bytes), context : HTTP::Server::Context, rate_limit_middleware : Middleware::RateLimitMiddleware) : Nil
+  def get_cover_art(user_id : Bytes, music_id : Bytes, context : HTTP::Server::Context, rate_limit_middleware : Middleware::RateLimitMiddleware) : Nil
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
@@ -211,7 +211,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
-  def set_cover_art(user_id : String, music_id : (String | Bytes), art_file : Bytes, art_file_type : String) : Bool
+  def set_cover_art(user_id : Bytes, music_id : Bytes, art_file : Bytes, art_file_type : String) : Bool
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
