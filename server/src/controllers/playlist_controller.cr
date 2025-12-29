@@ -11,6 +11,8 @@ require "../utils/str"
 struct Controllers::PlaylistController < Controllers::Controller
   include Validators::PlaylistValidator
 
+  PLAYLIST_ENDPOINT_PREFIX_LENGTH = 23 # "/api/v1/users/playlists".size
+
   UUID_LENGTH = 36
 
   PLAYLIST_ID_LENGTH = 22
@@ -23,21 +25,32 @@ struct Controllers::PlaylistController < Controllers::Controller
   ADD_PLAYLIST_MUSIC_REQUEST_BUFFER_SIZE = 35 # MUSIC_ID_LENGTH + 1 + String::HEADER_SIZE
   UPDATE_PLAYLIST_REQUEST_BUFFER_SIZE = 93 # MAX_PLAYLIST_NAME_LENGTH + 1 + String::HEADER_SIZE
 
+  ADD_PLAYLIST_MUSIC_PATH_SIZE = 29 # 1 + PLAYLIST_ID_LENGTH + "/music".size
+  GET_PLAYLIST_PATH_SIZE = 23 # 1 + PLAYLIST_ID_LENGTH
+  UPDATE_PLAYLIST_PATH_SIZE = 23 # 1 + PLAYLIST_ID_LENGTH
+  UPDATE_PLAYLIST_MUSIC_PATH_SIZE = 52 # 1 + PLAYLIST_ID_LENGTH + "/music/".size + MUSIC_ID_LENGTH
+  DELETE_PLAYLIST_PATH_SIZE = 23 # 1 + PLAYLIST_ID_LENGTH
+  DELETE_PLAYLIST_MUSIC_PATH_SIZE = 52 # 1 + PLAYLIST_ID_LENGTH + "/music/".size + MUSIC_ID_LENGTH
+
+  UPDATE_PLAYLIST_MUSIC_OFFSET = 23 # 1 + PLAYLIST_ID_LENGTH
+  UPDATE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET = 30 # 1 + PLAYLIST_ID_LENGTH + "/music/".size
+  DELETE_PLAYLIST_MUSIC_OFFSET = 23 # 1 + PLAYLIST_ID_LENGTH
+  DELETE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET = 30 # 1 + PLAYLIST_ID_LENGTH + "/music/".size
+
   def initialize(@playlist_repository : Repositories::PlaylistRepository, @music_repository : Repositories::MusicRepository, @auth_middleware : Middleware::AuthMiddleware)
-    @prefix_length = "/api/v1/users/playlists".size
   end
 
   # Handles requests made to the /api/v1/users/playlists route by directing it to the correct handler
   def handle_request(context : HTTP::Server::Context) : Nil
     # Get distinguishing path from resource string
-    path = context.request.resource.unsafe_byte_slice(@prefix_length)
+    path = context.request.resource.unsafe_byte_slice(PLAYLIST_ENDPOINT_PREFIX_LENGTH)
 
     # Call appropriate request handler
     case {context.request.method, path}
     when {"POST", _}
       if path.size == 0
         add_playlist(context)
-      elsif path.size == 1 + PLAYLIST_ID_LENGTH + "/music".size && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/music")
+      elsif path.size == ADD_PLAYLIST_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/music")
         add_playlist_music(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
@@ -45,27 +58,27 @@ struct Controllers::PlaylistController < Controllers::Controller
     when {"GET", _}
       if path.size == 0
         get_playlists(context)
-      elsif path.size == 1 + PLAYLIST_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord
+      elsif path.size == GET_PLAYLIST_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
         get_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
-      if path.size == 1 + PLAYLIST_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord
+      if path.size == UPDATE_PLAYLIST_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
         update_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
-      elsif path.size == 1 + PLAYLIST_ID_LENGTH + "/music/".size + MUSIC_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + 1 + PLAYLIST_ID_LENGTH).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
+      elsif path.size == UPDATE_PLAYLIST_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + UPDATE_PLAYLIST_MUSIC_OFFSET).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
         playlist_id = Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH)
-        music_id = Bytes.new(path.to_unsafe + 1 + PLAYLIST_ID_LENGTH + "/music/".size, MUSIC_ID_LENGTH)
+        music_id = Bytes.new(path.to_unsafe + UPDATE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET, MUSIC_ID_LENGTH)
         update_playlist_music(context, playlist_id, music_id)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
-      if path.size == 1 + PLAYLIST_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord
+      if path.size == DELETE_PLAYLIST_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
         delete_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
-      elsif path.size == 1 + PLAYLIST_ID_LENGTH + "/music/".size + MUSIC_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + 1 + PLAYLIST_ID_LENGTH).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
+      elsif path.size == DELETE_PLAYLIST_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + DELETE_PLAYLIST_MUSIC_OFFSET).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
         playlist_id = Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH)
-        music_id = Bytes.new(path.to_unsafe + 1 + PLAYLIST_ID_LENGTH + "/music/".size, MUSIC_ID_LENGTH)
+        music_id = Bytes.new(path.to_unsafe + DELETE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET, MUSIC_ID_LENGTH)
         delete_playlist_music(context, playlist_id, music_id)
       else
         context.response.status = HTTP::Status::NOT_FOUND
