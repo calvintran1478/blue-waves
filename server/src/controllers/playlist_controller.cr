@@ -37,70 +37,36 @@ struct Controllers::PlaylistController < Controllers::Controller
     when {"POST", _}
       if path.size == 0
         add_playlist(context)
-      elsif path.size > 1 && path.unsafe_fetch(0) == '/'.ord
-        sub_path_ptr = path.to_unsafe + 1
-        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1)
-
-        if !slash_ptr.null? && context.request.resource.ends_with?("music")
-          add_playlist_music(context, Bytes.new(sub_path_ptr, slash_ptr.as(UInt8*) - sub_path_ptr))
-        else
-          context.response.status = HTTP::Status::NOT_FOUND
-        end
+      elsif path.size == 1 + PLAYLIST_ID_LENGTH + "/music".size && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/music")
+        add_playlist_music(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"GET", _}
       if path.size == 0
         get_playlists(context)
-      elsif path.size > 1 && path.unsafe_fetch(0) == '/'.ord
-        sub_path_ptr = path.to_unsafe + 1
-        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1)
-
-        if slash_ptr.null?
-          get_playlist(context, Bytes.new(sub_path_ptr, path.size - 1))
-        else
-          context.response.status = HTTP::Status::NOT_FOUND
-        end
+      elsif path.size == 1 + PLAYLIST_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord
+        get_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
-      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
-        sub_path_ptr = path.to_unsafe + 1
-        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1).as(UInt8*)
-
-        if slash_ptr.null?
-          update_playlist(context, Bytes.new(sub_path_ptr, path.size - 1))
-        elsif slash_ptr.memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
-          playlist_id = Bytes.new(sub_path_ptr, slash_ptr - sub_path_ptr)
-
-          slash_ptr += "/music/".bytesize
-          music_id = Bytes.new(slash_ptr, path.size - 1 - playlist_id.size - "/music/".bytesize)
-
-          update_playlist_music(context, playlist_id, music_id)
-        else
-          context.response.status = HTTP::Status::NOT_FOUND
-        end
+      if path.size == 1 + PLAYLIST_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord
+        update_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
+      elsif path.size == 1 + PLAYLIST_ID_LENGTH + "/music/".size + MUSIC_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + 1 + PLAYLIST_ID_LENGTH).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
+        playlist_id = Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH)
+        music_id = Bytes.new(path.to_unsafe + 1 + PLAYLIST_ID_LENGTH + "/music/".size, MUSIC_ID_LENGTH)
+        update_playlist_music(context, playlist_id, music_id)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
-      if path.size > 1 && path.unsafe_fetch(0) == '/'.ord
-        sub_path_ptr = path.to_unsafe + 1
-        slash_ptr = LibC.memchr(sub_path_ptr, '/'.ord, path.size - 1).as(UInt8*)
-
-        if slash_ptr.null?
-          delete_playlist(context, Bytes.new(sub_path_ptr, path.size - 1))
-        elsif slash_ptr.memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
-          playlist_id = Bytes.new(sub_path_ptr, slash_ptr - sub_path_ptr)
-
-          slash_ptr += "/music/".bytesize
-          music_id = Bytes.new(slash_ptr, path.size - 1 - playlist_id.size - "/music/".bytesize)
-
-          delete_playlist_music(context, playlist_id, music_id)
-        else
-          context.response.status = HTTP::Status::NOT_FOUND
-        end
+      if path.size == 1 + PLAYLIST_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord
+        delete_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
+      elsif path.size == 1 + PLAYLIST_ID_LENGTH + "/music/".size + MUSIC_ID_LENGTH && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + 1 + PLAYLIST_ID_LENGTH).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
+        playlist_id = Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH)
+        music_id = Bytes.new(path.to_unsafe + 1 + PLAYLIST_ID_LENGTH + "/music/".size, MUSIC_ID_LENGTH)
+        delete_playlist_music(context, playlist_id, music_id)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -166,13 +132,7 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Check if music already exists in playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    if playlist_id.size != PLAYLIST_ID_LENGTH
-      context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << "Playlist not found"
-      return
-    end
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
-
     unless @playlist_repository.exists_by_id(user_id_str, playlist_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
@@ -223,15 +183,9 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Retreive playlist based on playlist id
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    playlist_exists = false
-    if playlist_id.size == PLAYLIST_ID_LENGTH
-      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
-      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
-      playlist_exists = @playlist_repository.get(user_id_str, playlist_id_str, context)
-    end
-
-    # Respond with error if playlist was not found
-    unless playlist_exists
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+    playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+    unless @playlist_repository.get(user_id_str, playlist_id_str, context)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
       return
@@ -255,21 +209,15 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Update playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    playlist_updated = false
-    if playlist_id.size == PLAYLIST_ID_LENGTH
-      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
-      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
-
-      if @playlist_repository.exists_by_name_excluding_id(user_id_str, data.playlist_name, playlist_id_str)
-        context.response.status = HTTP::Status::CONFLICT
-        context.response.output << "Playlist with the given name already exists"
-        return
-      end
-
-      playlist_updated = @playlist_repository.update(user_id_str, playlist_id_str, data.playlist_name)
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+    playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+    if @playlist_repository.exists_by_name_excluding_id(user_id_str, data.playlist_name, playlist_id_str)
+      context.response.status = HTTP::Status::CONFLICT
+      context.response.output << "Playlist with the given name already exists"
+      return
     end
 
-    unless playlist_updated
+    unless @playlist_repository.update(user_id_str, playlist_id_str, data.playlist_name)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
       return
@@ -296,16 +244,11 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Update music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    if playlist_id.size == PLAYLIST_ID_LENGTH && music_id.size == MUSIC_ID_LENGTH
-      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
-      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
-      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
-      @playlist_repository.update_music(user_id_str, playlist_id_str, music_id_str, data.music_number, context)
-    else
-      context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << "Music not found within playlist"
-      return
-    end
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+    playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+
+    @playlist_repository.update_music(user_id_str, playlist_id_str, music_id_str, data.music_number, context)
   end
 
   # Deletes a playlist from the user's collection
@@ -320,14 +263,9 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Delete playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    playlist_removed = false
-    if playlist_id.size == PLAYLIST_ID_LENGTH
-      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
-      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
-      playlist_removed = @playlist_repository.delete(user_id_str, playlist_id_str)
-    end
-
-    unless playlist_removed
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+    playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+    unless @playlist_repository.delete(user_id_str, playlist_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
       return
@@ -350,15 +288,11 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Remove music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    music_removed = false
-    if playlist_id.size == PLAYLIST_ID_LENGTH && music_id.size == MUSIC_ID_LENGTH
-      user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
-      playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
-      music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
-      music_removed = @playlist_repository.remove_music(user_id_str, playlist_id_str, music_id_str)
-    end
+    user_id_str = Utils::Str.finalize_string(user_id_buffer.to_unsafe, UUID_LENGTH)
+    playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe)
+    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
 
-    unless music_removed
+    unless @playlist_repository.remove_music(user_id_str, playlist_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music not found"
       return
