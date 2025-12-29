@@ -168,13 +168,6 @@ struct Controllers::UserController < Controllers::Controller
     token_family_id = payload.token_family_id
     sequence_number = payload.sequence_number
 
-    # Check that the user exists in the database
-    user_exists = @user_repository.exists_by_id(user_id)
-    unless user_exists
-      context.response.status = HTTP::Status::UNAUTHORIZED
-      return
-    end
-
     # Check that the token family exists
     expected_sequence_number = @auth_db.get(token_family_id)
     if expected_sequence_number.nil?
