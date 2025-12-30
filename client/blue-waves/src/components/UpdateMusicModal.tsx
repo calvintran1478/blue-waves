@@ -101,6 +101,13 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
 
         if (response.ok) {
             // Invalidate cover art cache
+            const db = await openDB("musicFileDB", 1, {
+                upgrade(database) {
+                    database.createObjectStore("musicFiles", { keyPath: "music_id" });
+                    database.createObjectStore("coverArtFiles", { keyPath: "music_id" });
+                },
+            })
+            await db.delete("coverArtFiles", props.musicId());
             props.setMusicId("");
         } else if (response.status === 401) {
             setToken(await getToken());
