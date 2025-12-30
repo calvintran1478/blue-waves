@@ -206,7 +206,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
-  def set_cover_art(user_id : Bytes, music_id : Bytes, art_file : Bytes, art_file_type : String) : Bool
+  def set_cover_art(user_id : Bytes, music_id : String, art_file : Bytes, art_file_type : String) : Bool
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)

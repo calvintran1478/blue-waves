@@ -312,7 +312,7 @@ module Validators::MusicValidator
     end
 
     title_buffer = update_music_buffer
-    title = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(Bytes.new(curr_buffer + 1, title_length), title_buffer)
+    title = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(curr_buffer + 1, title_buffer, title_length.to_i32)
 
     # Parse artist
     curr_buffer = newline_ptr + 1
@@ -323,7 +323,7 @@ module Validators::MusicValidator
     end
 
     artist_buffer = update_music_buffer + MAX_TITLE_STRING_LENGTH
-    artist = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(Bytes.new(curr_buffer + 1, artist_length), artist_buffer)
+    artist = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(curr_buffer + 1, artist_buffer, artist_length.to_i32)
 
     # Check the given title is non-blank and is within size limits
     unless title.nil?

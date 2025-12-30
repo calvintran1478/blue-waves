@@ -41,20 +41,17 @@ module Utils::Str
   # require "../utils/env/str"
   #
   # buffer = uninitialized UInt8[18] # "hello".size + 1 + String::HEADER_SIZE
-  # string_bytes = "hello".to_slice
-  #
-  # my_string = Utils::Str.stringify(string_bytes, buffer.to_unsafe) # => "hello"
+  # my_string = Utils::Str.stringify("hello".to_unsafe, buffer.to_unsafe, 5) # => "hello"
   # ```
-  def stringify(value : Bytes, string_buffer : UInt8*) : String
+  def stringify(src_buffer : UInt8*, string_buffer : UInt8*, size : Int32) : String
     # Copy bytes over and terminate content with a null byte
-    bytesize = value.bytesize
     string_buffer = string_buffer.as(String)
     buffer = string_buffer.to_unsafe
-    buffer.copy_from(value.to_unsafe, bytesize)
-    buffer[bytesize] = 0_u8
+    buffer.copy_from(src_buffer, size)
+    buffer[size] = 0_u8
 
     # Initialize string header
-    string_buffer.initialize_header(bytesize, bytesize)
+    string_buffer.initialize_header(size, size)
 
     string_buffer
   end

@@ -27,27 +27,27 @@ struct Controllers::MusicController < Controllers::Controller
       if path.size == 0 || path.unsafe_fetch(0) == '?'.ord
         get_music(context)
       elsif path.size == GET_MUSIC_FILE_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        get_music_file(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
+        get_music_file(context, path.to_unsafe + 1)
       elsif path.size == GET_MUSIC_COVER_ART_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/cover-art")
-        get_music_cover_art(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
+        get_music_cover_art(context, path.to_unsafe + 1)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PUT", _}
       if path.size == SET_MUSIC_COVER_ART_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/cover-art")
-        set_music_cover_art(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
+        set_music_cover_art(context, path.to_unsafe + 1)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
       if path.size == UPDATE_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        update_music(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
+        update_music(context, path.to_unsafe + 1)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
       if path.size == DELETE_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        delete_music_file(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
+        delete_music_file(context, path.to_unsafe + 1)
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -132,7 +132,7 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: GET
   # Path: /api/v1/users/music/{music_id}
-  def get_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
+  def get_music_file(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
@@ -147,28 +147,28 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Fetch music file and write contents to the response body
-    @music_repository.get(user_id, music_id, context)
+    @music_repository.get(user_id, Bytes.new(music_id, MUSIC_ID_LENGTH), context)
   end
 
   # Retreives the cover art for a music file from the user's collection
   #
   # Method: GET
   # Path: /api/v1/users/music/{music_id}/cover-art
-  def get_music_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
+  def get_music_cover_art(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
 
     # Fetch music cover art and write contents to the response body
     user_id = Bytes.new(user_id_buffer.to_unsafe.as(String).to_unsafe, USER_ID_LENGTH)
-    @music_repository.get_cover_art(user_id, music_id, context, @rate_limit_middleware)
+    @music_repository.get_cover_art(user_id, Bytes.new(music_id, MUSIC_ID_LENGTH), context, @rate_limit_middleware)
   end
 
   # Sets the cover art for a music file from the user's collection
   #
   # Method: PUT
   # Path: /api/v1/users/music/{music_id}/cover-art
-  def set_music_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
+  def set_music_cover_art(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
@@ -185,7 +185,7 @@ struct Controllers::MusicController < Controllers::Controller
     # Check if music file exists
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
     unless @music_repository.exists_by_id(user_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -197,7 +197,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Set cover art for the music file
-    cover_art_created = @music_repository.set_cover_art(user_id, music_id, data.art_file, data.art_file_type)
+    cover_art_created = @music_repository.set_cover_art(user_id, music_id_str, data.art_file, data.art_file_type)
 
     # Free allocated memory
     LibC.free(data.art_file.to_unsafe)
@@ -205,7 +205,7 @@ struct Controllers::MusicController < Controllers::Controller
     # Send success response
     if cover_art_created
       context.response.status = HTTP::Status::CREATED
-      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", music_id, "/cover-art")
+      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", music_id_str, "/cover-art")
     else
       context.response.status = HTTP::Status::NO_CONTENT
     end
@@ -215,7 +215,7 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: PATCH
   # Path: /api/v1/users/music/{music_id}
-  def update_music(context : HTTP::Server::Context, music_id : Bytes) : Nil
+  def update_music(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
@@ -228,7 +228,7 @@ struct Controllers::MusicController < Controllers::Controller
     # Update music file
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
     unless @music_repository.update(user_id_str, music_id_str, data.title, data.artist)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -243,7 +243,7 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: DELETE
   # Path: /api/v1/users/music/{music_id}
-  def delete_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
+  def delete_music_file(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
@@ -251,7 +251,7 @@ struct Controllers::MusicController < Controllers::Controller
     # Delete music file
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe)
+    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
     unless @music_repository.delete(user_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
