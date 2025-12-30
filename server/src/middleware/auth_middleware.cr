@@ -44,7 +44,7 @@ class Middleware::AuthMiddleware
     end
 
     # Parse access token and get user id
-    payload = Utils::Token.decode_access_token(access_token, @API_SECRET, user_id_buffer)
+    payload = Utils::Token::AccessClaims.decode(access_token, @API_SECRET, user_id_buffer)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return false

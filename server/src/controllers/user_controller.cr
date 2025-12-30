@@ -130,7 +130,7 @@ struct Controllers::UserController < Controllers::Controller
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
-      value: Utils::Token.encode_refresh_token(refresh_claims, @API_SECRET),
+      value: refresh_claims.encode(@API_SECRET),
       max_age: Time::Span.new(seconds: @REFRESH_TOKEN_LIFESPAN),
       http_only: true,
       secure: true,
@@ -140,7 +140,7 @@ struct Controllers::UserController < Controllers::Controller
     # Send access token
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::OK
-    Utils::Token.encode_access_token(access_claims, @API_SECRET, context.response.output)
+    access_claims.encode(@API_SECRET, context.response.output)
   end
 
   # Returns a new refresh token access token pair the user can use to authenticate
@@ -158,7 +158,8 @@ struct Controllers::UserController < Controllers::Controller
 
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
-    payload = Utils::Token.decode_refresh_token(refresh_token_cookie.value.to_slice, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
+    payload = Utils::Token::RefreshClaims.decode(refresh_token_cookie.value, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
+
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -192,7 +193,7 @@ struct Controllers::UserController < Controllers::Controller
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
       name: "refresh-token",
-      value: Utils::Token.encode_refresh_token(refresh_claims, @API_SECRET),
+      value: refresh_claims.encode(@API_SECRET),
       max_age: Time::Span.new(seconds: @REFRESH_TOKEN_LIFESPAN),
       http_only: true,
       secure: true,
@@ -202,7 +203,7 @@ struct Controllers::UserController < Controllers::Controller
     # Send access token
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::OK
-    Utils::Token.encode_access_token(access_claims, @API_SECRET, context.response.output)
+    access_claims.encode(@API_SECRET, context.response.output)
   end
 
   # Logs out the user by invalidating their access token and preventing new
@@ -235,7 +236,7 @@ struct Controllers::UserController < Controllers::Controller
 
     # Parse access token and get user id
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    payload = Utils::Token.decode_access_token(access_token, @API_SECRET, user_id_buffer.to_unsafe)
+    payload = Utils::Token::AccessClaims.decode(access_token, @API_SECRET, user_id_buffer.to_unsafe)
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
@@ -251,7 +252,8 @@ struct Controllers::UserController < Controllers::Controller
     token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
     refresh_token_cookie = context.request.cookies["refresh-token"]?
     if !refresh_token_cookie.nil?
-      payload = Utils::Token.decode_refresh_token(refresh_token_cookie.value.to_slice, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
+      payload = Utils::Token::RefreshClaims.decode(refresh_token_cookie.value, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
+
       if !payload.nil?
         @auth_db.del(payload.token_family_id)
       end
