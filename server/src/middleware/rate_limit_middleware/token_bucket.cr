@@ -17,7 +17,7 @@ class Middleware::RateLimitMiddleware
     #
     # Automatically refills and subtracts from the token bucket as needed upon
     # each successful call
-    def rate_limit_request(user_id : (String | Bytes)) : Bool
+    def rate_limit_request(user_id : Bytes) : Bool
       # Identify user bucket for this endpoint
       bucket_id = Utils::Str.combine_bytes(@http_method, ":", @endpoint, ":", user_id)
 
