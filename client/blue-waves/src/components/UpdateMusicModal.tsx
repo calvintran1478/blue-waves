@@ -141,7 +141,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
                 <button onClick={deleteMusic}>delete</button>
             </div>
             <div class="flex justify-around">
-                <form onSubmit={handleUpdate} class="flex flex-col justify-center items-center">
+                <form onSubmit={handleUpdate} class="flex flex-col items-center">
                     <div class="flex items-center m-4">
                         <label for="title" class="text-lg m-2">Title</label>
                         <input id="title" class="border-2 m-2 w-60 h-8" value={title} onChange={(event) => {title = event.target.value}} maxlength={150}/>
@@ -150,8 +150,11 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
                         <label for="artist" class="text-lg m-2">Artist</label>
                         <input id="artist" class="border-2 m-2 w-60 h-8" value={artist} onChange={(event) => {artist = event.target.value}} maxlength={100}/>
                     </div>
-                    <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
-                    <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={setCoverArtLoading()}>
+                    <div class="flex items-center m-3 mr-10">
+                        <label for="artFile" class="text-lg m-2">Cover Art</label>
+                        <input ref={artInput} type="file" id="artFile" class="w-60 m-2"/>
+                    </div>
+                    <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400 mt-4" disabled={setCoverArtLoading()}>
                         <Switch fallback={<span class="mr-2">Update music</span>}>
                             <Match when={setCoverArtLoading()}>
                                 <span class="mr-2">Updating</span>
