@@ -20,7 +20,7 @@ const PlaylistPage = () => {
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
-    const [, setMusicPlayerState] = useContext(MusicPlayerStateContext) as Store<any>;
+    const [musicPlayerState, setMusicPlayerState] = useContext(MusicPlayerStateContext) as Store<any>;
    
     const [playlistName, setPlaylistName] = createSignal("");
     const [showAddPlaylistMusicModal, setShowAddPlaylistMusicModal] = createSignal(false);
@@ -157,15 +157,15 @@ const PlaylistPage = () => {
     const [playlistMusic, modifyPlaylistMusic] = createResource(fetchPlaylist);
 
     return (
-        <div class="flex">
-            <div class="flex flex-col w-1/5 h-screen border-2">
+        <div class="flex flex-row-reverse">
+            <div class={`flex flex-col w-1/5 ${musicPlayerState.showMusicPlayer ? "h-[calc(100vh-5rem)]" : "h-screen"} border-r-2 fixed left-0`}>
                 <nav class="flex flex-col items-center p-6">
                     <A href="/home" class="text-2xl font-medium m-6">Home</A>
                     <A href="/library" class="text-2xl font-medium m-6">Library</A>
                     <A href="/playlists" class="text-2xl font-medium m-6">Playlists</A>
                 </nav>
             </div>
-            <div class="flex flex-col w-4/5">
+            <div class="flex flex-col w-4/5 mb-20">
                 <Suspense>
                     <h1 class="text-3xl font-semibold mt-16 mb-4">{playlistName()}</h1>
                     <div>
