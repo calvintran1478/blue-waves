@@ -62,17 +62,23 @@ const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resourc
                 <button onClick={props.closeCallback}>close</button>
             </div>
             <form onSubmit={addMusic} class="flex flex-col items-center">
-                <div class="flex items-center m-4">
+                <div class="flex justify-center m-4">
                     <label for="title" class="text-lg m-2">Title</label>
                     <input id="title" class="border-2 m-2 w-60 h-8" onChange={(event) => {title = event.target.value}} maxlength={150} required/>
                 </div>
-                <div class="flex items-center m-4">
+                <div class="flex justify-center m-4">
                     <label for="artist" class="text-lg m-2">Artist</label>
                     <input id="artist" class="border-2 m-2 w-60 h-8" onChange={(event) => {artist = event.target.value}} maxlength={100} required/>
                 </div>
-                <input ref={musicInput} type="file" id="musicFile" class="w-80 m-6 mb-4" required/>
-                <input ref={artInput} type="file" id="artFile" class="w-80 m-6 mb-8"/>
-                <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400" disabled={addMusicLoading()}>
+                <div class="flex justify-center m-3">
+                    <label for="artist" class="text-lg m-2">Music</label>
+                    <input ref={musicInput} type="file" id="musicFile" class="w-60 m-2" required/>
+                </div>
+                <div class="flex justify-center m-3 mr-10">
+                    <label for="artist" class="text-lg m-2">Cover Art</label>
+                    <input ref={artInput} type="file" id="artFile" class="w-60 m-2"/>
+                </div>
+                <button class="inline-flex items-center border-2 rounded p-3 bg-neutral-400 mt-5" disabled={addMusicLoading()}>
                     <span class="mr-2">Add music</span>
                     <Show when={addMusicLoading()}>
                         <LoadingSpinner/>
