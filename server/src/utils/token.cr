@@ -1,5 +1,6 @@
 require "./str"
 require "./constants"
+require "./encoding"
 
 module Utils::Token
   include Utils::Constants
@@ -14,66 +15,43 @@ module Utils::Token
     def initialize(@user_id : Pointer(UInt8), @exp : Int64)
     end
 
-    # Creates access claims from the given slice of bytes
-    #
-    # The first 36 bytes should be the UUID of the user and the next 8 bytes
-    # should be the network-endian encoded expiration timestamp as an Int64
-    #
-    # The string contents of the user id is written to the provided user id
-    # buffer, which must be large enough to store 49 bytes
-    def initialize(bytes : Bytes, user_id_buffer : UInt8*)
-      @user_id = user_id_buffer.as(String).to_unsafe
-      user_id.copy_from(bytes.to_unsafe, USER_ID_LENGTH)
-      @exp = IO::ByteFormat::NetworkEndian.decode(Int64, Bytes.new(bytes.to_unsafe + USER_ID_LENGTH, sizeof(Int64)))
-    end
-
-    # Writes the contents of these claims to the given buffer and returns the
-    # result as a slice of 44 bytes
-    #
-    # The provided buffer must be large enough to store 44 bytes
-    def to_bytes(buffer : UInt8*) : Bytes
-      buffer.copy_from(@user_id, USER_ID_LENGTH)
-      IO::ByteFormat::NetworkEndian.encode(@exp, Bytes.new(buffer + USER_ID_LENGTH, sizeof(Int64)))
-
-      Bytes.new(buffer, ACCESS_CLAIMS_SIZE)
-    end
-
-    # Creates an access token from the provided access claims, which are signed
-    # using the provided key
+    # Creates an access token from self, which is signed using the provided key
     #
     # The contents of the token are written to the given IO
     def encode(key : String, io : IO) : Nil
-      buffer = uninitialized UInt8[ACCESS_CLAIMS_SIZE]
-      encoded_payload = Base64.urlsafe_encode(self.to_bytes(buffer.to_unsafe), false)
-      encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
+      # Create encoded payload
+      buffer = uninitialized UInt8[47]
+      buffer.to_unsafe.copy_from(@user_id, USER_ID_LENGTH)
+      Utils::Encoding.urlsafe_encode_int64(@exp, buffer.to_unsafe + USER_ID_LENGTH)
+      encoded_payload = Bytes.new(buffer.to_unsafe, 47)
 
-      io << encoded_payload
-      io << encoded_signature
+      # Write encoded payload and signature to the provided io
+      io.write(encoded_payload)
+      Utils::Encoding.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), io)
     end
 
     # Parses the provided access token for its contents
     #
-    # Upon success this returns the access claims of the token. Otherwise this
-    # function returns nil
-    def AccessClaims.decode(token : Bytes, key : String, user_id_buffer : UInt8*) : (AccessClaims | Nil)
+    # Upon success this returns the expiration time of the token and writes the
+    # user id to given buffer. Otherwise this function returns nil
+    def AccessClaims.decode(token : Bytes, key : String, user_id_buffer : UInt8*) : (Int64 | Nil)
       # Parse token into its two segments
-      encoded_payload = Bytes.new(token.to_unsafe, 59)
-      encoded_signature = Bytes.new(token.to_unsafe + 59, 43)
+      encoded_payload = Bytes.new(token.to_unsafe, 47)
+      encoded_signature = Bytes.new(token.to_unsafe + 47, 43)
 
       # Verify signature
-      expected_encoded_signature = Base64.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), false)
+      expected_signature_buffer = uninitialized UInt8[43]
+      expected_encoded_signature = Utils::Encoding.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), expected_signature_buffer.to_unsafe)
       return if !Crypto::Subtle.constant_time_compare(encoded_signature, expected_encoded_signature)
 
       # Decode payload claims
-      decoded_payload = Base64.decode(encoded_payload) rescue nil
-      return if decoded_payload.nil?
-
-      payload = AccessClaims.new(decoded_payload, user_id_buffer)
+      user_id_buffer.as(String).to_unsafe.copy_from(encoded_payload.to_unsafe, USER_ID_LENGTH)
+      exp = Utils::Encoding.decode_int64(encoded_payload.to_unsafe + USER_ID_LENGTH)
 
       # Validate payload
-      return if payload.exp < Time.utc.to_unix
+      return if exp < Time.utc.to_unix
 
-      payload
+      exp
     end
   end
 

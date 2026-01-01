@@ -236,14 +236,14 @@ struct Controllers::UserController < Controllers::Controller
 
     # Parse access token and get user id
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    payload = Utils::Token::AccessClaims.decode(access_token, @API_SECRET, user_id_buffer.to_unsafe)
-    if payload.nil?
+    exp = Utils::Token::AccessClaims.decode(access_token, @API_SECRET, user_id_buffer.to_unsafe)
+    if exp.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
 
     # Determine remaining time for which the access token is valid
-    remaining_time = payload.exp - Time.utc.to_unix
+    remaining_time = exp - Time.utc.to_unix
 
     # Add access token to black list
     @auth_db.set(black_list_token_id, "", ex: remaining_time)
