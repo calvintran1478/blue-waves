@@ -64,8 +64,8 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlists
   def add_playlist(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Validate user input
     add_playlist_request_buffer = uninitialized UInt8[ADD_PLAYLIST_REQUEST_BUFFER_SIZE]
@@ -73,7 +73,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Check if playlist with the given name already exists
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     if @playlist_repository.exists_by_name(user_id_str, data.playlist_name)
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << "Playlist with the given name already exists"
@@ -95,8 +95,8 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlists/{playlist_id}/music
   def add_playlist_music(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Validate user input
     add_playlist_music_request_buffer = uninitialized UInt8[ADD_PLAYLIST_MUSIC_REQUEST_BUFFER_SIZE]
@@ -104,7 +104,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Check if music exists
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     unless @music_repository.exists_by_id(user_id_str, data.music_id)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -140,11 +140,11 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlists
   def get_playlists(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Send music data
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
     @playlist_repository.list(user_id_str, context)
@@ -157,12 +157,12 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlists/{playlist_id}
   def get_playlist(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Retreive playlist based on playlist id
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe, PLAYLIST_ID_LENGTH)
     unless @playlist_repository.get(user_id_str, playlist_id_str, context)
       context.response.status = HTTP::Status::NOT_FOUND
@@ -177,8 +177,8 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlists/{playlist_id}
   def update_playlist(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Validate user input
     update_playlist_request_buffer = uninitialized UInt8[UPDATE_PLAYLIST_REQUEST_BUFFER_SIZE]
@@ -187,7 +187,7 @@ struct Controllers::PlaylistController < Controllers::Controller
 
     # Update playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe, PLAYLIST_ID_LENGTH)
     if @playlist_repository.exists_by_name_excluding_id(user_id_str, data.playlist_name, playlist_id_str)
       context.response.status = HTTP::Status::CONFLICT
@@ -211,8 +211,8 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlists/{playlist_id}/music/{music_id}
   def update_playlist_music(context : HTTP::Server::Context, playlist_id : UInt8*, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Validate user input
     data = validate_update_playlist_music_request(context)
@@ -221,7 +221,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Update music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe, PLAYLIST_ID_LENGTH)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
 
@@ -234,12 +234,12 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlist/{playlist_id}
   def delete_playlist(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Delete playlist
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe, PLAYLIST_ID_LENGTH)
     unless @playlist_repository.delete(user_id_str, playlist_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
@@ -257,13 +257,13 @@ struct Controllers::PlaylistController < Controllers::Controller
   # Path: /api/v1/users/playlist/{playlist_id}/music/{music_id}
   def delete_playlist_music(context : HTTP::Server::Context, playlist_id : UInt8*, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Remove music track
     playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     playlist_id_str = Utils::Str.stringify(playlist_id, playlist_id_buffer.to_unsafe, PLAYLIST_ID_LENGTH)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
 

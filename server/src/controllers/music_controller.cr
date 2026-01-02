@@ -62,8 +62,8 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music
   def add_music(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Validate user input
     add_music_request_buffer = uninitialized UInt8[ADD_MUSIC_REQUEST_BUFFER_SIZE]
@@ -71,7 +71,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Add music to the user's collection
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, data.music_file_type, data.art_file_type, user_id_str)
 
     # Free allocated memory
@@ -99,8 +99,8 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music
   def get_music(context : HTTP::Server::Context) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Read pagination parameters
     limit = context.request.query_params["limit"]?
@@ -122,7 +122,7 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Send music data
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     context.response.content_type = "application/json"
     context.response.status = HTTP::Status::OK
     @music_repository.list(user_id_str, context, limit_value, offset_value)
@@ -134,12 +134,12 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def get_music_file(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Perform rate limiting
-    user_id = Bytes.new(user_id_buffer.to_unsafe.as(String).to_unsafe, USER_ID_LENGTH)
-    music_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}")
+    user_id_bytes = Bytes.new(user_id, USER_ID_LENGTH)
+    music_request_allowed = @rate_limit_middleware.rate_limit_request(user_id_bytes, "GET", "/api/v1/users/music/{music_id}")
     if !music_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
       context.response.output << "Too Many Requests"
@@ -147,7 +147,7 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Fetch music file and write contents to the response body
-    @music_repository.get(user_id, Bytes.new(music_id, MUSIC_ID_LENGTH), context)
+    @music_repository.get(user_id_bytes, Bytes.new(music_id, MUSIC_ID_LENGTH), context)
   end
 
   # Retreives the cover art for a music file from the user's collection
@@ -156,12 +156,12 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}/cover-art
   def get_music_cover_art(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Fetch music cover art and write contents to the response body
-    user_id = Bytes.new(user_id_buffer.to_unsafe.as(String).to_unsafe, USER_ID_LENGTH)
-    @music_repository.get_cover_art(user_id, Bytes.new(music_id, MUSIC_ID_LENGTH), context, @rate_limit_middleware)
+    user_id_bytes = Bytes.new(user_id, USER_ID_LENGTH)
+    @music_repository.get_cover_art(user_id_bytes, Bytes.new(music_id, MUSIC_ID_LENGTH), context, @rate_limit_middleware)
   end
 
   # Sets the cover art for a music file from the user's collection
@@ -170,12 +170,12 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}/cover-art
   def set_music_cover_art(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Perform rate limiting
-    user_id = Bytes.new(user_id_buffer.to_unsafe.as(String).to_unsafe, USER_ID_LENGTH)
-    set_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "PUT", "/api/v1/users/music/{music_id}/cover-art")
+    user_id_bytes = Bytes.new(user_id, USER_ID_LENGTH)
+    set_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id_bytes, "PUT", "/api/v1/users/music/{music_id}/cover-art")
     if !set_cover_art_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
       context.response.output << "Too Many Requests"
@@ -184,7 +184,7 @@ struct Controllers::MusicController < Controllers::Controller
 
     # Check if music file exists
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
     unless @music_repository.exists_by_id(user_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
@@ -197,7 +197,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Set cover art for the music file
-    cover_art_created = @music_repository.set_cover_art(user_id, music_id_str, data.art_file, data.art_file_type)
+    cover_art_created = @music_repository.set_cover_art(user_id_bytes, music_id_str, data.art_file, data.art_file_type)
 
     # Free allocated memory
     LibC.free(data.art_file.to_unsafe)
@@ -217,8 +217,8 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def update_music(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Validate user input
     update_music_buffer = uninitialized UInt8[UPDATE_MUSIC_REQUEST_BUFFER_SIZE]
@@ -227,7 +227,7 @@ struct Controllers::MusicController < Controllers::Controller
 
     # Update music file
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
     unless @music_repository.update(user_id_str, music_id_str, data.title, data.artist)
       context.response.status = HTTP::Status::NOT_FOUND
@@ -245,12 +245,12 @@ struct Controllers::MusicController < Controllers::Controller
   # Path: /api/v1/users/music/{music_id}
   def delete_music_file(context : HTTP::Server::Context, music_id : UInt8*) : Nil
     # Get user
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    return unless @auth_middleware.get_user(context, user_id_buffer.to_unsafe)
+    user_id = @auth_middleware.get_user(context)
+    return if user_id.nil?
 
     # Delete music file
     music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
+    user_id_str = Utils::Str.finalize_user_id(user_id)
     music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
     unless @music_repository.delete(user_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND

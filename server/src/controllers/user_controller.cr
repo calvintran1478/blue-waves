@@ -220,11 +220,13 @@ struct Controllers::UserController < Controllers::Controller
     end
 
     # Extract access token
-    if !auth_header.starts_with?("Bearer ")
+    auth_header_ptr = auth_header.to_unsafe
+    if auth_header_ptr.memcmp("Bearer ".to_unsafe, 7) != 0
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
-    access_token = auth_header.unsafe_byte_slice(7)
+    access_token_ptr = auth_header_ptr + 7
+    access_token = Bytes.new(access_token_ptr, 90)
 
     # Check if the access token is black listed
     black_list_token_id_buffer = uninitialized UInt8[BLACK_LIST_TOKEN_ID_STRING_LENGTH]
@@ -236,7 +238,7 @@ struct Controllers::UserController < Controllers::Controller
 
     # Parse access token and get user id
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
-    exp = Utils::Token::AccessClaims.decode(access_token, @API_SECRET, user_id_buffer.to_unsafe)
+    exp = Utils::Token::AccessClaims.decode(access_token_ptr, @API_SECRET)
     if exp.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return

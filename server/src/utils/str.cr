@@ -72,7 +72,7 @@ module Utils::Str
   # user_id_str = Utils::Str.finalize_user_id(user_id_buffer.to_unsafe)
   # ```
   def finalize_user_id(user_id_buffer : UInt8*) : String
-    string_buffer = user_id_buffer.as(String)
+    string_buffer = (user_id_buffer - String::HEADER_SIZE).as(String)
     string_buffer.to_unsafe[USER_ID_LENGTH] = 0_u8
     string_buffer.initialize_header(USER_ID_LENGTH, USER_ID_LENGTH)
 

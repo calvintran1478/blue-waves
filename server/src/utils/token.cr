@@ -25,30 +25,27 @@ module Utils::Token
       Utils::Encoding.urlsafe_encode_int64(@exp, buffer.to_unsafe + USER_ID_LENGTH)
       encoded_payload = Bytes.new(buffer.to_unsafe, 47)
 
-      # Write encoded payload and signature to the provided io
-      io.write(encoded_payload)
+      # Write signature and encoded payload to the provided IO
       Utils::Encoding.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), io)
+      io.write(encoded_payload)
     end
 
     # Parses the provided access token for its contents
     #
     # Upon success this returns the expiration time of the token and writes the
     # user id to given buffer. Otherwise this function returns nil
-    def AccessClaims.decode(token : Bytes, key : String, user_id_buffer : UInt8*) : (Int64 | Nil)
+    def AccessClaims.decode(token : UInt8*, key : String) : (Int64 | Nil)
       # Parse token into its two segments
-      encoded_payload = Bytes.new(token.to_unsafe, 47)
-      encoded_signature = Bytes.new(token.to_unsafe + 47, 43)
+      encoded_signature = Bytes.new(token, 43)
+      encoded_payload = Bytes.new(token + 43, 47)
 
       # Verify signature
       expected_signature_buffer = uninitialized UInt8[43]
       expected_encoded_signature = Utils::Encoding.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), expected_signature_buffer.to_unsafe)
       return if !Crypto::Subtle.constant_time_compare(encoded_signature, expected_encoded_signature)
 
-      # Decode payload claims
-      user_id_buffer.as(String).to_unsafe.copy_from(encoded_payload.to_unsafe, USER_ID_LENGTH)
-      exp = Utils::Encoding.decode_int64(encoded_payload.to_unsafe + USER_ID_LENGTH)
-
       # Validate payload
+      exp = Utils::Encoding.decode_int64(encoded_payload.to_unsafe + USER_ID_LENGTH)
       return if exp < Time.utc.to_unix
 
       exp
