@@ -183,9 +183,8 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Check if music file exists
-    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
+    music_id_str = Utils::Str.finalize_music_id(music_id)
     unless @music_repository.exists_by_id(user_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -226,9 +225,8 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Update music file
-    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
+    music_id_str = Utils::Str.finalize_music_id(music_id)
     unless @music_repository.update(user_id_str, music_id_str, data.title, data.artist)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
@@ -249,9 +247,8 @@ struct Controllers::MusicController < Controllers::Controller
     return if user_id.nil?
 
     # Delete music file
-    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
     user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
+    music_id_str = Utils::Str.finalize_music_id(music_id)
     unless @music_repository.delete(user_id_str, music_id_str)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
