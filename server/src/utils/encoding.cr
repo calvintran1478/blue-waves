@@ -9,6 +9,17 @@ module Utils::Encoding
   private NL         = '\n'.ord.to_u8
   private NR         = '\r'.ord.to_u8
 
+  def urlsafe_encode_int32(value : Int32, buffer : UInt8*) : Nil
+    int_buffer = uninitialized UInt8[4]
+    int_bytes = Bytes.new(int_buffer.to_unsafe, 4)
+    IO::ByteFormat::NetworkEndian.encode(value, int_bytes)
+
+    appender = buffer.appender
+    to_base64(int_bytes) do |byte|
+      appender << byte
+    end
+  end
+
   def urlsafe_encode_int64(value : Int64, buffer : UInt8*) : Nil
     int_buffer = uninitialized UInt8[8]
     int_bytes = Bytes.new(int_buffer.to_unsafe, 8)
@@ -81,17 +92,24 @@ module Utils::Encoding
     end
   end
 
+  def decode_int32(data : UInt8*) : Int32
+    buffer = uninitialized UInt8[4]
+    appender = buffer.to_unsafe.appender
+    from_base64(data, 6) { |byte| appender << byte }
+
+    IO::ByteFormat::NetworkEndian.decode(Int32, buffer.to_slice)
+  end
+
   def decode_int64(data : UInt8*) : Int64
     buffer = uninitialized UInt8[8]
     appender = buffer.to_unsafe.appender
-    int64_from_base64(data) { |byte| appender << byte }
+    from_base64(data, 11) { |byte| appender << byte }
 
     IO::ByteFormat::NetworkEndian.decode(Int64, buffer.to_slice)
   end
 
   # Processes the given data and yields each byte.
-  private def int64_from_base64(data : UInt8*, &block : UInt8 -> Nil)
-    size = 11
+  private def from_base64(data : UInt8*, size : Int32, &block : UInt8 -> Nil)
     bytes = data
     bytes_begin = bytes
 

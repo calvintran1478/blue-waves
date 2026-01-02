@@ -187,8 +187,8 @@ struct Controllers::UserController < Controllers::Controller
     @auth_db.set(token_family_id, sequence_number + 1, ex: @REFRESH_TOKEN_LIFESPAN)
 
     # Generate access token and refresh token pair
-    access_claims = Utils::Token::AccessClaims.new(user_id, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
-    refresh_claims = Utils::Token::RefreshClaims.new(user_id, token_family_id, sequence_number + 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
+    access_claims = Utils::Token::AccessClaims.new(user_id.as(String).to_unsafe, Time.utc.to_unix + @ACCESS_TOKEN_LIFESPAN)
+    refresh_claims = Utils::Token::RefreshClaims.new(user_id.as(String).to_unsafe, token_family_id, sequence_number + 1, Time.utc.to_unix + @REFRESH_TOKEN_LIFESPAN)
 
     # Set http-only cookie containing refresh token
     context.response.cookies << HTTP::Cookie.new(
