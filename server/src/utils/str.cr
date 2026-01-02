@@ -79,6 +79,29 @@ module Utils::Str
     string_buffer
   end
 
+  # Initializes the given playlist id bytes as a string
+  #
+  # This can be used to have the internal buffer of the string be allocated on
+  # the stack instead of the heap, reducing pressure placed on the garbage
+  # collector
+  #
+  # ```
+  # require "../utils/env/str"
+  #
+  # playlist_id_buffer = uninitialized UInt8[PLAYLIST_ID_STRING_LENGTH]
+  # temp_buffer = playlist_id_buffer.as(String).to_unsafe
+  # temp_buffer.copy_from("<PLAYLIST_ID>", PLAYLIST_ID_LENGTH)
+  #
+  # playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id_buffer.to_unsafe)
+  # ```
+  def finalize_playlist_id(playlist_id_buffer : UInt8*) : String
+    string_buffer = (playlist_id_buffer - String::HEADER_SIZE).as(String)
+    string_buffer.to_unsafe[PLAYLIST_ID_LENGTH] = 0_u8
+    string_buffer.initialize_header(PLAYLIST_ID_LENGTH, PLAYLIST_ID_LENGTH)
+
+    string_buffer
+  end
+
   # Initializes the given buffer as a string containing the same content as the
   # provided bytes/strings concatenated together. The bytes are copied, leaving
   # the original sources unchanged
