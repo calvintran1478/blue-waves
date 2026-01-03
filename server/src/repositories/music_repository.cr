@@ -267,23 +267,35 @@ class Repositories::MusicRepository < Repositories::Repository
     # Delete music file and its cover art
     file_exists = (result.rows_affected != 0)
     if file_exists
+      # Create channel for synchronizing fibers
+      channel = Channel(Nil).new
+
       # Delete music file
       object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
       object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
-      @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
+      spawn do
+        @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
+        channel.send(nil)
+      end
 
       # Delete cover art
-      cover_art_str = "/cover-art"
-      curr_buffer = (object_id_buffer.to_unsafe + object_id.size).as(String).to_unsafe
-      curr_buffer.copy_from(cover_art_str.to_unsafe, cover_art_str.size)
-      curr_buffer[cover_art_str.size] = 0_u8
+      spawn do
+        cover_art_str = "/cover-art"
+        curr_buffer = (object_id_buffer.to_unsafe + object_id.size).as(String).to_unsafe
+        curr_buffer.copy_from(cover_art_str.to_unsafe, cover_art_str.size)
+        curr_buffer[cover_art_str.size] = 0_u8
 
-      bytesize = USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + cover_art_str.size
-      object_id = object_id_buffer.to_unsafe.as(String)
-      object_id.initialize_header(bytesize, bytesize)
+        bytesize = USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + cover_art_str.size
+        cover_art_id = object_id_buffer.to_unsafe.as(String)
+        cover_art_id.initialize_header(bytesize, bytesize)
 
-      @music_db.delete_object(@bucket_name, object_id, DEFAULT_S3_HEADER)
-      @cache_db.del(object_id)
+        @music_db.delete_object(@bucket_name, cover_art_id, DEFAULT_S3_HEADER)
+        @cache_db.del(cover_art_id)
+        channel.send(nil)
+      end
+
+      channel.receive
+      channel.receive
     end
 
     file_exists
