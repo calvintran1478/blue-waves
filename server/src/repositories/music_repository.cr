@@ -42,22 +42,31 @@ class Repositories::MusicRepository < Repositories::Repository
       object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
 
       # Upload music file to storage bucket
-      @music_db.put_object(@bucket_name, object_id, music_file, {"Content-Type" => music_file_type})
+      channel = Channel(Nil).new
+      spawn do
+        @music_db.put_object(@bucket_name, object_id, music_file, {"Content-Type" => music_file_type})
+        channel.send(nil)
+      end
 
       # Upload cover art file to storage bucket (if one was included)
       unless art_file.nil?
-        # Create object id for cover art file
-        cover_art_str = "/cover-art"
-        curr_buffer = (object_id_buffer.to_unsafe + object_id.size).as(String).to_unsafe
-        curr_buffer.copy_from(cover_art_str.to_unsafe, cover_art_str.size)
-        curr_buffer[cover_art_str.size] = 0_u8
+        spawn do
+          # Create object id for cover art file
+          cover_art_str = "/cover-art"
+          curr_buffer = (object_id_buffer.to_unsafe + object_id.size).as(String).to_unsafe
+          curr_buffer.copy_from(cover_art_str.to_unsafe, cover_art_str.size)
+          curr_buffer[cover_art_str.size] = 0_u8
 
-        bytesize = USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + cover_art_str.size
-        object_id = object_id_buffer.to_unsafe.as(String)
-        object_id.initialize_header(bytesize, bytesize)
+          bytesize = USER_ID_LENGTH + 1 + MUSIC_ID_LENGTH + cover_art_str.size
+          object_id = object_id_buffer.to_unsafe.as(String)
+          object_id.initialize_header(bytesize, bytesize)
 
-        @music_db.put_object(@bucket_name, object_id, art_file, {"Content-Type" => art_file_type.as(String)})
+          @music_db.put_object(@bucket_name, object_id, art_file, {"Content-Type" => art_file_type.as(String)})
+          channel.send(nil)
+        end
+        channel.receive
       end
+      channel.receive
 
       music_id
     end
