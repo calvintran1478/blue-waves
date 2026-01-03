@@ -16,15 +16,6 @@ class Repositories::PlaylistRepository < Repositories::Repository
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND playlist_id=$2)", user_id, playlist_id, as: Bool
   end
 
-  # Returns whether a playlist with the given name exists in the user's collection
-  #
-  # ```
-  # playlist_repository.exists_by_name("user_id", "playlist_name") # => true if user with "user_id" has a playlist with "playlist_name" in their collection
-  # ```
-  def exists_by_name(user_id : String, playlist_name : String) : Bool
-    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2)", user_id, playlist_name, as: Bool
-  end
-
   # Returns whether the given music file exists in the user's playlist
   #
   # ```
@@ -70,16 +61,17 @@ class Repositories::PlaylistRepository < Repositories::Repository
     @db.query_one query, user_id, music_id, user_id, playlist_id, user_id, playlist_id, music_id, as: Bool
   end
 
-  # Adds a playlist to the user's collection
+  # Adds a playlist to the user's collection. Returns the newly created playlist
+  # id if successful and nil otherwise
   #
   # ```
-  # playlist_repository.create("user_id", "playlist_name")
+  # playlist_repository.create("user_id", "playlist_name") # => "<Playlist_ID>" if a playlist with the given name does not already exist in the user's collection
   # ```
-  def create(user_id : String, playlist_name : String) : String
+  def create(user_id : String, playlist_name : String) : (String | Nil)
     playlist_id = Random::Secure.urlsafe_base64
-    @db.exec "INSERT INTO playlists (playlist_id, name, user_id) VALUES ($1, $2, $3)", playlist_id, playlist_name, user_id
+    result = @db.exec "INSERT INTO playlists (playlist_id, name, user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO NOTHING", playlist_id, playlist_name, user_id
 
-    playlist_id
+    return playlist_id if result.rows_affected == 1
   end
 
   # Lists metadata from playlists in the user's collection and writes contents

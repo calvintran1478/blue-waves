@@ -72,16 +72,14 @@ struct Controllers::PlaylistController < Controllers::Controller
     data = validate_add_playlist_request(context, add_playlist_request_buffer.to_unsafe)
     return if data.nil?
 
-    # Check if playlist with the given name already exists
+    # Add playlist to the user's collection
     user_id_str = Utils::Str.finalize_user_id(user_id)
-    if @playlist_repository.exists_by_name(user_id_str, data.playlist_name)
+    playlist_id = @playlist_repository.create(user_id_str, data.playlist_name)
+    if playlist_id.nil?
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << "Playlist with the given name already exists"
       return
     end
-
-    # Add playlist to the user's collection
-    playlist_id = @playlist_repository.create(user_id_str, data.playlist_name)
 
     # Send success responses
     context.response.content_type = "text/plain"
