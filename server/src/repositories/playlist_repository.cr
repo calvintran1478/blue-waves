@@ -25,13 +25,25 @@ class Repositories::PlaylistRepository < Repositories::Repository
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3)", user_id, playlist_id, music_id, as: Bool
   end
 
-  # Adds a music track to a playlist in the user's collection
+  # Adds a music track to a playlist in the user's collection. Returns whether
+  # the addition was successful
   #
   # ```
-  # playlist_repository.add_music("user_id", "playlist_name", "music_id")
+  # playlist_repository.add_music("user_id", "playlist_name", "music_id") # => true if the music track exists and does not already exist in the playlist
   # ```
-  def add_music(user_id : String, playlist_id : String, music_id : String) : Nil
-    @db.exec "INSERT INTO playlist_music (user_id, playlist_id, music_id, music_number) VALUES ($1, $2, $3, (SELECT COALESCE(MAX(pm.music_number), -256) FROM playlist_music pm WHERE user_id=$4 AND playlist_id=$5) + 256)", user_id, playlist_id, music_id, user_id, playlist_id
+  def add_music(user_id : String, playlist_id : String, music_id : String) : Bool
+    query = <<-SQL
+      INSERT INTO playlist_music (user_id, playlist_id, music_id, music_number)
+      SELECT $1, $2, $3, (SELECT COALESCE(MAX(pm.music_number), -256) FROM playlist_music pm WHERE user_id=$4 AND playlist_id=$5) + 256
+      WHERE
+        EXISTS(SELECT 1 FROM music WHERE user_id=$6 AND music_id=$7) AND
+        EXISTS(SELECT 1 FROM playlists WHERE user_id=$8 AND playlist_id=$9) AND
+        NOT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$10 AND playlist_id=$11 AND music_id=$12)
+    SQL
+
+    result = @db.exec query, user_id, playlist_id, music_id, user_id, playlist_id, user_id, music_id, user_id, playlist_id, user_id, playlist_id, music_id
+
+    result.rows_affected != 0
   end
 
   # Returns whether a playlist with the given name exists in the user's collection
@@ -42,23 +54,6 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   def exists_by_name_excluding_id(user_id : String, playlist_name : String, excluded_playlist_id : String)
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2 AND playlist_id<>$3)", user_id, playlist_name, excluded_playlist_id, as: Bool
-  end
-
-  # Returns whether a music track can be safely added to a user's playlist
-  #
-  # ```
-  # playlist_repository.valid_music_add("user_id", "playlist_id", "music_id") # => true if the music track exists and does already exist in the playlist
-  # ```
-  def valid_music_add(user_id : String, playlist_id : String, music_id : String) : Bool
-    query = <<-SQL
-      SELECT (
-        (EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND music_id=$2)) AND
-        (EXISTS(SELECT 1 FROM playlists WHERE user_id=$3 AND playlist_id=$4)) AND
-        (NOT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$5 AND playlist_id=$6 AND music_id=$7))
-      )
-    SQL
-
-    @db.query_one query, user_id, music_id, user_id, playlist_id, user_id, playlist_id, music_id, as: Bool
   end
 
   # Adds a playlist to the user's collection. Returns the newly created playlist

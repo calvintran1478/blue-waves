@@ -101,10 +101,10 @@ struct Controllers::PlaylistController < Controllers::Controller
     data = validate_add_playlist_music_request(context, add_playlist_music_request_buffer.to_unsafe)
     return if data.nil?
 
-    # Check if music track can be safely added to the playlist
+    # Add music track to the end of the playlist
     user_id_str = Utils::Str.finalize_user_id(user_id)
     playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    unless @playlist_repository.valid_music_add(user_id_str, playlist_id_str, data.music_id)
+    unless @playlist_repository.add_music(user_id_str, playlist_id_str, data.music_id)
       # Check if music exists
       if !@music_repository.exists_by_id(user_id_str, data.music_id)
         context.response.status = HTTP::Status::NOT_FOUND
@@ -121,9 +121,6 @@ struct Controllers::PlaylistController < Controllers::Controller
 
       return
     end
-
-    # Add music track to the end of the playlist
-    @playlist_repository.add_music(user_id_str, playlist_id_str, data.music_id)
 
     # Send success response
     context.response.content_type = "text/plain"
