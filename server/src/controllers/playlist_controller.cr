@@ -103,25 +103,24 @@ struct Controllers::PlaylistController < Controllers::Controller
     data = validate_add_playlist_music_request(context, add_playlist_music_request_buffer.to_unsafe)
     return if data.nil?
 
-    # Check if music exists
+    # Check if music track can be safely added to the playlist
     user_id_str = Utils::Str.finalize_user_id(user_id)
-    unless @music_repository.exists_by_id(user_id_str, data.music_id)
-      context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << "Music file not found"
-      return
-    end
-
-    # Check if music already exists in playlist
     playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    unless @playlist_repository.exists_by_id(user_id_str, playlist_id_str)
-      context.response.status = HTTP::Status::NOT_FOUND
-      context.response.output << "Playlist not found"
-      return
-    end
+    unless @playlist_repository.valid_music_add(user_id_str, playlist_id_str, data.music_id)
+      # Check if music exists
+      if !@music_repository.exists_by_id(user_id_str, data.music_id)
+        context.response.status = HTTP::Status::NOT_FOUND
+        context.response.output << "Music file not found"
 
-    if @playlist_repository.contains_music_id(user_id_str, playlist_id_str, data.music_id)
-      context.response.status = HTTP::Status::CONFLICT
-      context.response.output << "Music file already exists in playlist"
+      # Check if music already exists in playlist
+      elsif !@playlist_repository.exists_by_id(user_id_str, playlist_id_str)
+        context.response.status = HTTP::Status::NOT_FOUND
+        context.response.output << "Playlist not found"
+      else
+        context.response.status = HTTP::Status::CONFLICT
+        context.response.output << "Music file already exists in playlist"
+      end
+
       return
     end
 
