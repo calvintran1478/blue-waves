@@ -28,10 +28,34 @@ const PlaylistsPage = () => {
         });
 
         if (response.ok) {
-            return await response.json();
+            const buffer = await response.arrayBuffer();
+            const view = new DataView(buffer);
+            const decoder = new TextDecoder("utf-8");
+            const playlists = [];
+            let index = 0;
+
+            while (index < buffer.byteLength) {
+                // Decode playlist id
+                const playlistIdBytes = new Uint8Array(buffer, index, 22);
+                const playlistId = decoder.decode(playlistIdBytes);
+                index += 22;
+
+                // Decode playlist name
+                const nameLength = view.getInt32(index);
+                const nameBytes = new Uint8Array(buffer, index + 4, nameLength);
+                const name = decoder.decode(nameBytes);
+                index += 4 + nameLength;
+
+                // Add playlist
+                playlists.push({"playlist_id": playlistId, "name": name});
+            }
+            
+            return playlists;
         } else if (response.status === 401) {
             setToken(await getToken());
             return await fetchPlaylists();
+        } else {
+            return [];
         }
     }
 

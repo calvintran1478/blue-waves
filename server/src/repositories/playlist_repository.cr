@@ -76,23 +76,14 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # playlist_repository.list("user_id", context)
   # ```
   def list(user_id : String, context : HTTP::Server::Context) : Nil
-    initialized = false
-    context.response.output << "["
     @db.query("SELECT playlist_id, name FROM playlists WHERE user_id=$1 ORDER BY creation_time", user_id) do |rs|
       rs.each do
         playlist_id, playlist_name = rs.read(String, String)
-        if initialized
-          context.response.output << ","
-        else
-          initialized = true
-        end
-        context.response.output << "{"
-        context.response.output << "\"playlist_id\":\"" << playlist_id << "\","
-        context.response.output << "\"name\":\"" << playlist_name << "\""
-        context.response.output << "}"
+        context.response.output << playlist_id
+        context.response.output.write_bytes(playlist_name.bytesize, IO::ByteFormat::NetworkEndian)
+        context.response.output << playlist_name
       end
     end
-    context.response.output << "]"
   end
 
   # Gets the name of a playlist in the user's collection along with all music
