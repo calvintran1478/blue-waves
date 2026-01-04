@@ -123,7 +123,7 @@ struct Controllers::MusicController < Controllers::Controller
 
     # Send music data
     user_id_str = Utils::Str.finalize_user_id(user_id)
-    context.response.content_type = "application/json"
+    context.response.content_type = "application/octet-stream"
     context.response.status = HTTP::Status::OK
     @music_repository.list(user_id_str, context, limit_value, offset_value)
   end

@@ -31,11 +31,39 @@ const LibraryPage = () => {
         });
 
         if (response.ok) {
-            return await response.json();
+            const buffer = await response.arrayBuffer();
+            const view = new DataView(buffer);
+            const decoder = new TextDecoder("utf-8");
+            const musicEntries = [];
+            let index = 0;
+
+            while (index < buffer.byteLength) {
+                // Decode music id
+                const musicIdBytes = new Uint8Array(buffer, index, 22);
+                const musicId = decoder.decode(musicIdBytes);
+                index += 22;
+
+                // Decode title
+                const titleLength = view.getInt32(index);
+                const titleBytes = new Uint8Array(buffer, index + 4, titleLength);
+                const title = decoder.decode(titleBytes);
+                index += 4 + titleLength;
+
+                // Decode artist
+                const artistLength = view.getInt32(index);
+                const artistBytes = new Uint8Array(buffer, index + 4, artistLength);
+                const artist = decoder.decode(artistBytes);
+                index += 4 + artistLength;
+
+                // Add music entry
+                musicEntries.push({"music_id": musicId, "title": title, "artist": artist});
+            }
+            return musicEntries;
         } else if (response.status === 401) {
             setToken(await getToken());
             return await fetchMusicEntries();
         }
+        return [];
     };
 
     const [musicEntries, modifyMusicEntries] = createResource(fetchMusicEntries);
