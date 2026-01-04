@@ -103,29 +103,22 @@ class Repositories::PlaylistRepository < Repositories::Repository
       end
     end
     return false if name.nil?
-    context.response.content_type = "application/json"
+    context.response.content_type = "application/octet-stream"
     context.response.status = HTTP::Status::OK
-    context.response.output << "{\"name\":\"" << name << "\","
+    context.response.output.write_bytes(name.bytesize, IO::ByteFormat::NetworkEndian)
+    context.response.output << name
 
     # Get playlist music tracks
-    initialized = false
-    context.response.output << "\"music\":["
     @db.query("SELECT m.music_id, m.title, m.artist FROM music m INNER JOIN playlist_music pm ON m.music_id = pm.music_id WHERE pm.user_id=$1 AND pm.playlist_id=$2 ORDER BY pm.music_number", user_id, playlist_id) do |rs|
       rs.each do
         music_id, title, artist = rs.read(String, String, String)
-        if initialized
-          context.response.output << ","
-        else
-          initialized = true
-        end
-        context.response.output << "{"
-        context.response.output << "\"music_id\":\"" << music_id << "\","
-        context.response.output << "\"title\":\"" << title << "\","
-        context.response.output << "\"artist\":\"" << artist << "\""
-        context.response.output << "}"
+        context.response.output << music_id
+        context.response.output.write_bytes(title.bytesize, IO::ByteFormat::NetworkEndian)
+        context.response.output << title
+        context.response.output.write_bytes(artist.bytesize, IO::ByteFormat::NetworkEndian)
+        context.response.output << artist
       end
     end
-    context.response.output << "]}"
 
     true
   end

@@ -37,9 +37,42 @@ const PlaylistPage = () => {
         });
 
         if (response.ok) {
-            const body = await response.json();
-            setPlaylistName(body["name"]);
-            return body["music"];
+            const buffer = await response.arrayBuffer();
+            const view = new DataView(buffer);
+            const decoder = new TextDecoder("utf-8");
+            const musicEntries = [];
+            let index = 0;
+
+            // Decode playlist name
+            const playlistNameLength = view.getInt32(index);
+            const playlistNameBytes = new Uint8Array(buffer, index + 4, playlistNameLength);
+            setPlaylistName(decoder.decode(playlistNameBytes));
+            index += 4 + playlistNameLength;
+
+            // Decode music entries
+            while (index < buffer.byteLength) {
+                // Decode music id
+                const musicIdBytes = new Uint8Array(buffer, index, 22);
+                const musicId = decoder.decode(musicIdBytes);
+                index += 22;
+
+                // Decode title
+                const titleLength = view.getInt32(index);
+                const titleBytes = new Uint8Array(buffer, index + 4, titleLength);
+                const title = decoder.decode(titleBytes);
+                index += 4 + titleLength;
+
+                // Decode artist
+                const artistLength = view.getInt32(index);
+                const artistBytes = new Uint8Array(buffer, index + 4, artistLength);
+                const artist = decoder.decode(artistBytes);
+                index += 4 + artistLength;
+
+                // Add music entry
+                musicEntries.push({"music_id": musicId, "title": title, "artist": artist});
+            }
+
+            return musicEntries;
         } else if (response.status === 401) {
             setToken(await getToken());
             return await fetchPlaylist();
@@ -73,10 +106,10 @@ const PlaylistPage = () => {
             inputElement.stepDown();
 
             // Swap indices
-            const oldIndex = playlistMusic().findIndex((musicEntry: MusicEntry) => musicEntry["music_id"] === musicId);
+            const oldIndex = playlistMusic()!.findIndex((musicEntry: MusicEntry) => musicEntry["music_id"] === musicId);
             const newIndex = newPosition - 1;
 
-            const newPlaylistMusic = [...playlistMusic()];
+            const newPlaylistMusic = [...playlistMusic()!];
             const temp = newPlaylistMusic[oldIndex];
             newPlaylistMusic[oldIndex] = newPlaylistMusic[newIndex];
             newPlaylistMusic[newIndex] = temp;
@@ -95,7 +128,7 @@ const PlaylistPage = () => {
         // Check if new state is valid
         const inputElement = (document.querySelector(`#${musicId}`) as HTMLInputElement);
         const newPosition = parseInt(inputElement.value) + 1;
-        if (newPosition === playlistMusic().length + 1) {
+        if (newPosition === playlistMusic()!.length + 1) {
             return;
         }
 
@@ -115,10 +148,10 @@ const PlaylistPage = () => {
             inputElement.stepUp();
 
             // Swap indices
-            const oldIndex = playlistMusic().findIndex((musicEntry: MusicEntry) => musicEntry["music_id"] === musicId);
+            const oldIndex = playlistMusic()!.findIndex((musicEntry: MusicEntry) => musicEntry["music_id"] === musicId);
             const newIndex = newPosition - 1;
 
-            const newPlaylistMusic = [...playlistMusic()];
+            const newPlaylistMusic = [...playlistMusic()!];
             const temp = newPlaylistMusic[oldIndex];
             newPlaylistMusic[oldIndex] = newPlaylistMusic[newIndex];
             newPlaylistMusic[newIndex] = temp;
@@ -144,8 +177,8 @@ const PlaylistPage = () => {
 
         if (response.ok) {
             // Delete playlist entry
-            const newPlaylistMusic = [...playlistMusic()];
-            const playlistIndex = playlistMusic().findIndex((musicEntry: MusicEntry) => musicEntry["music_id"] === musicId);
+            const newPlaylistMusic = [...playlistMusic()!];
+            const playlistIndex = playlistMusic()!.findIndex((musicEntry: MusicEntry) => musicEntry["music_id"] === musicId);
             newPlaylistMusic.splice(playlistIndex, 1);
             modifyPlaylistMusic.mutate(newPlaylistMusic);
         } else if (response.status === 401) {
@@ -190,7 +223,7 @@ const PlaylistPage = () => {
                                         </div>
                                         <div class="flex">
                                             <button class="p-1 rounded border" onClick={(event) => deleteMusic(event, musicEntry["music_id"])}>Delete</button>
-                                            <input disabled id={musicEntry["music_id"]} class="p-1 w-8 ml-8 mr-2 rounded border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" min={1} max={playlistMusic().length} value={index()+1}/>
+                                            <input disabled id={musicEntry["music_id"]} class="p-1 w-8 ml-8 mr-2 rounded border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" type="number" min={1} max={playlistMusic()!.length} value={index()+1}/>
                                             <div class="flex flex-col mr-4">
                                                 <button class="flex justify-center items-center rounded-t border w-5 p-1 h-4 bg-gray-100 hover:bg-gray-200" onClick={() => updateIndexUp(musicEntry["music_id"])}>^</button>
                                                 <button class="flex justify-center items-center rounded-b border w-5 p-1 h-4 bg-gray-100 hover:bg-gray-200" onClick={() => updateIndexDown(musicEntry["music_id"])}>v</button>
