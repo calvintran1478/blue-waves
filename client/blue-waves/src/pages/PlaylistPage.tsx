@@ -1,4 +1,4 @@
-import { createResource, useContext, createSignal, For, Signal, Show, Suspense } from "solid-js";
+import { createResource, useContext, createSignal, For, Signal, Show, Suspense, Resource } from "solid-js";
 import { A, useParams } from "@solidjs/router";
 import { Store } from "solid-js/store";
 import { getToken } from "../utils/token"; 
@@ -238,7 +238,7 @@ const PlaylistPage = () => {
             </div>
             <Show when={showAddPlaylistMusicModal()}>
                 <div class="flex justify-center items-center h-screen w-screen fixed inset-0 bg-black/50">
-                    <AddPlaylistMusicModal closeCallback={() => setShowAddPlaylistMusicModal(false)} playlistId={playlistId} playlistMusic={playlistMusic} setPlaylistMusic={modifyPlaylistMusic.mutate}/>
+                    <AddPlaylistMusicModal closeCallback={() => setShowAddPlaylistMusicModal(false)} playlistId={playlistId} playlistMusic={playlistMusic as Resource<MusicEntry[]>} setPlaylistMusic={modifyPlaylistMusic.mutate}/>
                 </div>
             </Show>
         </div>
