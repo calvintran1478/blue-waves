@@ -5,6 +5,10 @@ import { getToken } from "../utils/token";
 import { openDB } from "idb";
 import soundPng from "../assets/sound.png";
 import mutePng from "../assets/mute.png";
+import playSvg from "../assets/play.svg";
+import pauseSvg from "../assets/pause.svg";
+import prevSvg from "../assets/prev.svg";
+import nextSvg from "../assets/next.svg";
 
 const MusicPlayer = () => {
     const [musicFile, setMusicFile] = createSignal("");
@@ -222,9 +226,15 @@ const MusicPlayer = () => {
                     <p>{endTime()}</p>
                 </div>
                 <div>
-                    <button onClick={playPrev}>prev</button>
-                    <button class="mx-12" onClick={playPause}>{playing() ? "pause" : "play"}</button>
-                    <button onClick={playNext}>next</button>
+                    <button onClick={playPrev}>
+                        <img class="size-6" src={prevSvg} alt="prev"/>
+                    </button>
+                    <button class="mx-12" onClick={playPause}>
+                        <img class="size-6" src={playing() ? pauseSvg : playSvg} alt={playing() ? "pause" : "play"}/>
+                    </button>
+                    <button onClick={playNext}>
+                        <img class="size-6" src={nextSvg} alt="next"/>
+                    </button>
                 </div>
                 <div class="flex">
                     <button onClick={handleMute}>
