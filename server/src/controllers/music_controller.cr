@@ -27,27 +27,27 @@ struct Controllers::MusicController < Controllers::Controller
       if path.size == 0 || path.unsafe_fetch(0) == '?'.ord
         get_music(context)
       elsif path.size == GET_MUSIC_FILE_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        get_music_file(context, path.to_unsafe + 1)
+        get_music_file(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
       elsif path.size == GET_MUSIC_COVER_ART_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/cover-art")
-        get_music_cover_art(context, path.to_unsafe + 1)
+        get_music_cover_art(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PUT", _}
       if path.size == SET_MUSIC_COVER_ART_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/cover-art")
-        set_music_cover_art(context, path.to_unsafe + 1)
+        set_music_cover_art(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
       if path.size == UPDATE_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        update_music(context, path.to_unsafe + 1)
+        update_music(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
       if path.size == DELETE_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        delete_music_file(context, path.to_unsafe + 1)
+        delete_music_file(context, Bytes.new(path.to_unsafe + 1, MUSIC_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -130,14 +130,13 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: GET
   # Path: /api/v1/users/music/{music_id}
-  def get_music_file(context : HTTP::Server::Context, music_id : UInt8*) : Nil
+  def get_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Perform rate limiting
-    user_id_bytes = Bytes.new(user_id, USER_ID_LENGTH)
-    music_request_allowed = @rate_limit_middleware.rate_limit_request(user_id_bytes, "GET", "/api/v1/users/music/{music_id}")
+    music_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "GET", "/api/v1/users/music/{music_id}")
     if !music_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
       context.response.output << "Too Many Requests"
@@ -152,7 +151,7 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: GET
   # Path: /api/v1/users/music/{music_id}/cover-art
-  def get_music_cover_art(context : HTTP::Server::Context, music_id : UInt8*) : Nil
+  def get_music_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -165,14 +164,13 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: PUT
   # Path: /api/v1/users/music/{music_id}/cover-art
-  def set_music_cover_art(context : HTTP::Server::Context, music_id : UInt8*) : Nil
+  def set_music_cover_art(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
 
     # Perform rate limiting
-    user_id_bytes = Bytes.new(user_id, USER_ID_LENGTH)
-    set_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id_bytes, "PUT", "/api/v1/users/music/{music_id}/cover-art")
+    set_cover_art_request_allowed = @rate_limit_middleware.rate_limit_request(user_id, "PUT", "/api/v1/users/music/{music_id}/cover-art")
     if !set_cover_art_request_allowed
       context.response.status = HTTP::Status::TOO_MANY_REQUESTS
       context.response.output << "Too Many Requests"
@@ -199,7 +197,7 @@ struct Controllers::MusicController < Controllers::Controller
     # Send success response
     if cover_art_created
       context.response.status = HTTP::Status::CREATED
-      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", Bytes.new(music_id, MUSIC_ID_LENGTH), "/cover-art")
+      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", music_id, "/cover-art")
     else
       context.response.status = HTTP::Status::NO_CONTENT
     end
@@ -209,7 +207,7 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: PATCH
   # Path: /api/v1/users/music/{music_id}
-  def update_music(context : HTTP::Server::Context, music_id : UInt8*) : Nil
+  def update_music(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -234,7 +232,7 @@ struct Controllers::MusicController < Controllers::Controller
   #
   # Method: DELETE
   # Path: /api/v1/users/music/{music_id}
-  def delete_music_file(context : HTTP::Server::Context, music_id : UInt8*) : Nil
+  def delete_music_file(context : HTTP::Server::Context, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?

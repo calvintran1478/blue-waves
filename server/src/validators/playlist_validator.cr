@@ -66,7 +66,7 @@ module Validators::PlaylistValidator
       return
     end
 
-    AddPlaylistMusicRequest.new(add_playlist_music_request_buffer)
+    AddPlaylistMusicRequest.new(Bytes.new(add_playlist_music_request_buffer, MUSIC_ID_LENGTH))
   end
 
   def validate_update_playlist_request(context : HTTP::Server::Context, update_playlist_request_buffer : UInt8*) : (UpdatePlaylistRequest | Nil)

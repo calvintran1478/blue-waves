@@ -12,14 +12,13 @@ class Middleware::AuthMiddleware
 
   # Retreives the user id from the given HTTP server context
   #
-  # The user id is described by the 36 bytes addressed by the returned pointer.
   # If authentication fails for any reason this function returns nil and writes
   # a status code of 401 to the response header.
   #
   # ```
   # user_id = @auth_middleware.get_user(context)
   # ```
-  def get_user(context : HTTP::Server::Context) : (UInt8* | Nil)
+  def get_user(context : HTTP::Server::Context) : (Bytes | Nil)
     # Check that the authorization header is included
     auth_header = context.request.headers["Authorization"]?
     if auth_header.nil? || auth_header.size != EXPECTED_AUTH_HEADER_SIZE
@@ -41,6 +40,6 @@ class Middleware::AuthMiddleware
       return
     end
 
-    auth_header_ptr + 50
+    Bytes.new(auth_header_ptr + 50, USER_ID_LENGTH)
   end
 end

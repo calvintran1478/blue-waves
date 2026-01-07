@@ -25,7 +25,7 @@ struct Controllers::PlaylistController < Controllers::Controller
       if path.size == 0
         add_playlist(context)
       elsif path.size == ADD_PLAYLIST_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && context.request.resource.ends_with?("/music")
-        add_playlist_music(context, path.to_unsafe + 1)
+        add_playlist_music(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -33,23 +33,23 @@ struct Controllers::PlaylistController < Controllers::Controller
       if path.size == 0
         get_playlists(context)
       elsif path.size == GET_PLAYLIST_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        get_playlist(context, path.to_unsafe + 1)
+        get_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"PATCH", _}
       if path.size == UPDATE_PLAYLIST_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        update_playlist(context, path.to_unsafe + 1)
+        update_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       elsif path.size == UPDATE_PLAYLIST_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + UPDATE_PLAYLIST_MUSIC_OFFSET).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
-        update_playlist_music(context, path.to_unsafe + 1, path.to_unsafe + UPDATE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET)
+        update_playlist_music(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH), Bytes.new(path.to_unsafe + UPDATE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET, MUSIC_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
     when {"DELETE", _}
       if path.size == DELETE_PLAYLIST_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord
-        delete_playlist(context, path.to_unsafe + 1)
+        delete_playlist(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH))
       elsif path.size == DELETE_PLAYLIST_MUSIC_PATH_SIZE && path.unsafe_fetch(0) == '/'.ord && (path.to_unsafe + DELETE_PLAYLIST_MUSIC_OFFSET).memcmp("/music/".to_unsafe, "/music/".bytesize) == 0
-        delete_playlist_music(context, path.to_unsafe + 1, path.to_unsafe + DELETE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET)
+        delete_playlist_music(context, Bytes.new(path.to_unsafe + 1, PLAYLIST_ID_LENGTH), Bytes.new(path.to_unsafe + DELETE_PLAYLIST_MUSIC_MUSIC_ID_OFFSET, MUSIC_ID_LENGTH))
       else
         context.response.status = HTTP::Status::NOT_FOUND
       end
@@ -90,7 +90,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   #
   # Method: POST
   # Path: /api/v1/users/playlists/{playlist_id}/music
-  def add_playlist_music(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
+  def add_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -144,7 +144,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   #
   # Method: GET
   # Path: /api/v1/users/playlists/{playlist_id}
-  def get_playlist(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
+  def get_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -161,7 +161,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   #
   # Method: PATCH
   # Path: /api/v1/users/playlists/{playlist_id}
-  def update_playlist(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
+  def update_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -192,7 +192,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   #
   # Method : PATCH
   # Path: /api/v1/users/playlists/{playlist_id}/music/{music_id}
-  def update_playlist_music(context : HTTP::Server::Context, playlist_id : UInt8*, music_id : UInt8*) : Nil
+  def update_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -209,7 +209,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   #
   # Method: DELETE
   # Path: /api/v1/users/playlist/{playlist_id}
-  def delete_playlist(context : HTTP::Server::Context, playlist_id : UInt8*) : Nil
+  def delete_playlist(context : HTTP::Server::Context, playlist_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
@@ -229,7 +229,7 @@ struct Controllers::PlaylistController < Controllers::Controller
   #
   # Method: DELETE
   # Path: /api/v1/users/playlist/{playlist_id}/music/{music_id}
-  def delete_playlist_music(context : HTTP::Server::Context, playlist_id : UInt8*, music_id : UInt8*) : Nil
+  def delete_playlist_music(context : HTTP::Server::Context, playlist_id : Bytes, music_id : Bytes) : Nil
     # Get user
     user_id = @auth_middleware.get_user(context)
     return if user_id.nil?
