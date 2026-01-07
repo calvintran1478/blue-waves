@@ -226,31 +226,16 @@ struct Controllers::UserController < Controllers::Controller
       return
     end
     access_token_ptr = auth_header_ptr + 7
-    access_token = Bytes.new(access_token_ptr, 90)
-
-    # Check if the access token is black listed
-    black_list_token_id_buffer = uninitialized UInt8[BLACK_LIST_TOKEN_ID_STRING_LENGTH]
-    black_list_token_id = Utils::Str.stringify("black-list:", access_token, string_buffer: black_list_token_id_buffer.to_unsafe)
-    if @auth_db.exists(black_list_token_id) == 1
-      context.response.status = HTTP::Status::UNAUTHORIZED
-      return
-    end
 
     # Parse access token and get user id
-    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     exp = Utils::Token::AccessClaims.decode(access_token_ptr, @API_SECRET)
     if exp.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
 
-    # Determine remaining time for which the access token is valid
-    remaining_time = exp - Time.utc.to_unix
-
-    # Add access token to black list
-    @auth_db.set(black_list_token_id, "", ex: remaining_time)
-
     # Invalidate token family if refresh token is not expired
+    user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
     refresh_token_cookie = context.request.cookies["refresh-token"]?
     if !refresh_token_cookie.nil?
