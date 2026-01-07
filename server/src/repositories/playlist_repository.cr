@@ -242,13 +242,13 @@ class Repositories::PlaylistRepository < Repositories::Repository
         original_music_number = nil
         music_numbers = [] of Int32
         music_id_buffer = uninitialized UInt8[MUSIC_ID_LENGTH]
-        music_id_slice = Bytes.new(music_id_buffer, MUSIC_ID_LENGTH)
+        music_id_slice = Bytes.new(music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
         cnn.query("SELECT music_id, music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
           rs.each do
             rs.read do |music_id_io, _|
               if original_music_number.nil?
                 music_id_io.read_fully(music_id_slice)
-                original_music_number = music_numbers.size if music_id_slice == music_id end
+                original_music_number = music_numbers.size if music_id_slice == music_id
               end
             end
 
