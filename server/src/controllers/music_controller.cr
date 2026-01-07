@@ -71,8 +71,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Add music to the user's collection
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, data.music_file_type, data.art_file_type, user_id_str)
+    music_id = @music_repository.create(data.title, data.artist, data.music_file, data.art_file, data.music_file_type, data.art_file_type, user_id)
 
     # Free allocated memory
     LibC.free(data.file_buffer)
@@ -122,10 +121,9 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Send music data
-    user_id_str = Utils::Str.finalize_user_id(user_id)
     context.response.content_type = "application/octet-stream"
     context.response.status = HTTP::Status::OK
-    @music_repository.list(user_id_str, context, limit_value, offset_value)
+    @music_repository.list(user_id, context.response.output, limit_value, offset_value)
   end
 
   # Retreives a music file from the user's collection
@@ -147,7 +145,7 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Fetch music file and write contents to the response body
-    @music_repository.get(user_id_bytes, Bytes.new(music_id, MUSIC_ID_LENGTH), context)
+    @music_repository.get(user_id, music_id, context)
   end
 
   # Retreives the cover art for a music file from the user's collection
@@ -160,8 +158,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if user_id.nil?
 
     # Fetch music cover art and write contents to the response body
-    user_id_bytes = Bytes.new(user_id, USER_ID_LENGTH)
-    @music_repository.get_cover_art(user_id_bytes, Bytes.new(music_id, MUSIC_ID_LENGTH), context, @rate_limit_middleware)
+    @music_repository.get_cover_art(user_id, music_id, context, @rate_limit_middleware)
   end
 
   # Sets the cover art for a music file from the user's collection
@@ -183,9 +180,7 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Check if music file exists
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id_str = Utils::Str.finalize_music_id(music_id)
-    unless @music_repository.exists_by_id(user_id_str, music_id_str)
+    unless @music_repository.exists_by_id(user_id, music_id)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
       return
@@ -196,7 +191,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Set cover art for the music file
-    cover_art_created = @music_repository.set_cover_art(user_id_bytes, music_id_str, data.art_file, data.art_file_type)
+    cover_art_created = @music_repository.set_cover_art(user_id, music_id, data.art_file, data.art_file_type)
 
     # Free allocated memory
     LibC.free(data.art_file.to_unsafe)
@@ -204,7 +199,7 @@ struct Controllers::MusicController < Controllers::Controller
     # Send success response
     if cover_art_created
       context.response.status = HTTP::Status::CREATED
-      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", music_id_str, "/cover-art")
+      context.response.headers["Location"] = Utils::Str.combine_bytes("/users/music/", Bytes.new(music_id, MUSIC_ID_LENGTH), "/cover-art")
     else
       context.response.status = HTTP::Status::NO_CONTENT
     end
@@ -225,9 +220,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if data.nil?
 
     # Update music file
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id_str = Utils::Str.finalize_music_id(music_id)
-    unless @music_repository.update(user_id_str, music_id_str, data.title, data.artist)
+    unless @music_repository.update(user_id, music_id, data.title, data.artist)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
       return
@@ -247,9 +240,7 @@ struct Controllers::MusicController < Controllers::Controller
     return if user_id.nil?
 
     # Delete music file
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    music_id_str = Utils::Str.finalize_music_id(music_id)
-    unless @music_repository.delete(user_id_str, music_id_str)
+    unless @music_repository.delete(user_id, music_id)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music file not found"
       return

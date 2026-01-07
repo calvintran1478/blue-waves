@@ -73,8 +73,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Add playlist to the user's collection
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id = @playlist_repository.create(user_id_str, data.playlist_name)
+    playlist_id = @playlist_repository.create(user_id, data.playlist_name)
     if playlist_id.nil?
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << "Playlist with the given name already exists"
@@ -102,16 +101,14 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Add music track to the end of the playlist
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    unless @playlist_repository.add_music(user_id_str, playlist_id_str, data.music_id)
+    unless @playlist_repository.add_music(user_id, playlist_id, data.music_id)
       # Check if music exists
-      if !@music_repository.exists_by_id(user_id_str, data.music_id)
+      if !@music_repository.exists_by_id(user_id, data.music_id)
         context.response.status = HTTP::Status::NOT_FOUND
         context.response.output << "Music file not found"
 
       # Check if music already exists in playlist
-      elsif !@playlist_repository.exists_by_id(user_id_str, playlist_id_str)
+      elsif !@playlist_repository.exists_by_id(user_id, playlist_id)
         context.response.status = HTTP::Status::NOT_FOUND
         context.response.output << "Playlist not found"
       else
@@ -137,10 +134,9 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if user_id.nil?
 
     # Send music data
-    user_id_str = Utils::Str.finalize_user_id(user_id)
     context.response.content_type = "application/octet-stream"
     context.response.status = HTTP::Status::OK
-    @playlist_repository.list(user_id_str, context)
+    @playlist_repository.list(user_id, context.response.output)
   end
 
   # Retreives the name of a playlist in the user's collection, along with the
@@ -154,9 +150,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if user_id.nil?
 
     # Retreive playlist based on playlist id
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    unless @playlist_repository.get(user_id_str, playlist_id_str, context)
+    unless @playlist_repository.get(user_id, playlist_id, context)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
       return
@@ -178,15 +172,13 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Update playlist
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    if @playlist_repository.exists_by_name_excluding_id(user_id_str, data.playlist_name, playlist_id_str)
+    if @playlist_repository.exists_by_name_excluding_id(user_id, data.playlist_name, playlist_id)
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << "Playlist with the given name already exists"
       return
     end
 
-    unless @playlist_repository.update(user_id_str, playlist_id_str, data.playlist_name)
+    unless @playlist_repository.update(user_id, playlist_id, data.playlist_name)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
       return
@@ -210,12 +202,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if data.nil?
 
     # Update music track
-    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
-
-    @playlist_repository.update_music(user_id_str, playlist_id_str, music_id_str, data.music_number, context)
+    @playlist_repository.update_music(user_id, playlist_id, music_id, data.music_number, context)
   end
 
   # Deletes a playlist from the user's collection
@@ -228,9 +215,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if user_id.nil?
 
     # Delete playlist
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    unless @playlist_repository.delete(user_id_str, playlist_id_str)
+    unless @playlist_repository.delete(user_id, playlist_id)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Playlist not found"
       return
@@ -250,12 +235,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     return if user_id.nil?
 
     # Remove music track
-    music_id_buffer = uninitialized UInt8[MUSIC_ID_STRING_LENGTH]
-    user_id_str = Utils::Str.finalize_user_id(user_id)
-    playlist_id_str = Utils::Str.finalize_playlist_id(playlist_id)
-    music_id_str = Utils::Str.stringify(music_id, music_id_buffer.to_unsafe, MUSIC_ID_LENGTH)
-
-    unless @playlist_repository.remove_music(user_id_str, playlist_id_str, music_id_str)
+    unless @playlist_repository.remove_music(user_id, playlist_id, music_id)
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music not found"
       return

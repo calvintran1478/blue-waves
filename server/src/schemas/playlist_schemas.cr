@@ -14,9 +14,9 @@ module Schemas::PlaylistSchemas
   # Request body schema for POST requests sent to /api/v1/users/playlists/{playlist_id}/music
   struct AddPlaylistMusicRequest
 
-    getter music_id : String
+    getter music_id : UInt8*
 
-    def initialize(@music_id : String)
+    def initialize(@music_id : UInt8*)
     end
   end
 

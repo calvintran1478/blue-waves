@@ -11,7 +11,6 @@ require "../utils/constants"
 # Contains a set of methods for working with the music table. All queries made to the
 # music table should be made though a MusicRepository object.
 class Repositories::MusicRepository < Repositories::Repository
-  include Schemas::MusicSchemas
   include Utils::Constants
 
   def initialize(@db : DB::Database, @music_db : Awscr::S3::Client, @cache_db : Redis::PooledClient, @bucket_name : String)
@@ -22,7 +21,10 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.exists_by_id("user_id", "music_id") # => true if user with "user_id" has "music_id" in their collection
   # ```
-  def exists_by_id(user_id : String, music_id : String) : Bool
+  def exists_by_id(user_id : UInt8*, music_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND music_id=$2)", user_id, music_id, as: Bool
   end
 
@@ -31,7 +33,9 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.create("music_title", "artist", music_file, "user_id")
   # ```
-  def create(title : String, artist : String, music_file : Bytes, art_file : Bytes | Nil, music_file_type : String, art_file_type : String | Nil, user_id : String) : (String | Nil)
+  def create(title : String, artist : String, music_file : Bytes, art_file : Bytes | Nil, music_file_type : String, art_file_type : String | Nil, user_id : UInt8*) : (String | Nil)
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+
     @db.transaction do |tx|
       # Store metadata about the music file
       music_id = Random::Secure.urlsafe_base64
@@ -85,7 +89,9 @@ class Repositories::MusicRepository < Repositories::Repository
   #
   # music_repository.list("user_id", context, 10, 10)
   # ```
-  def list(user_id : String, context : HTTP::Server::Context, limit : (Int32 | Nil) = nil, offset : (Int32 | Nil) = nil) : Nil
+  def list(user_id : UInt8*, output : IO, limit : (Int32 | Nil) = nil, offset : (Int32 | Nil) = nil) : Nil
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+
     # Convert limit and offset to default values if not provided
     limit_value = limit.nil? ? "ALL" : limit
     offset_value = offset.nil? ? 0 : offset
@@ -93,12 +99,17 @@ class Repositories::MusicRepository < Repositories::Repository
     # Fetch music information
     @db.query("SELECT music_id, title, artist FROM music WHERE user_id=$1 ORDER BY creation_time DESC LIMIT #{limit_value} OFFSET #{offset_value}", user_id) do |rs|
       rs.each do
-        music_id, title, artist = rs.read(String, String, String)
-        context.response.output << music_id
-        context.response.output.write_bytes(title.bytesize, IO::ByteFormat::NetworkEndian)
-        context.response.output << title
-        context.response.output.write_bytes(artist.bytesize, IO::ByteFormat::NetworkEndian)
-        context.response.output << artist
+        rs.read { |music_id, _| IO.copy(music_id, output) }
+
+        rs.read do |title, bytesize|
+          output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          IO.copy(title, output)
+        end
+
+        rs.read do |artist, bytesize|
+          output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          IO.copy(artist, output)
+        end
       end
     end
   end
@@ -110,7 +121,10 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get("user_id", "music_id", context)
   # ```
-  def get(user_id : Bytes, music_id : Bytes, context : HTTP::Server::Context) : Nil
+  def get(user_id : UInt8*, music_id : UInt8*, context : HTTP::Server::Context) : Nil
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[MUSIC_FILE_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, string_buffer: object_id_buffer.to_unsafe)
@@ -148,7 +162,10 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.get_cover_art("user_id", "music_id", context)
   # ```
-  def get_cover_art(user_id : Bytes, music_id : Bytes, context : HTTP::Server::Context, rate_limit_middleware : Middleware::RateLimitMiddleware) : Nil
+  def get_cover_art(user_id : UInt8*, music_id : UInt8*, context : HTTP::Server::Context, rate_limit_middleware : Middleware::RateLimitMiddleware) : Nil
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
@@ -207,7 +224,10 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.set_cover_art("user_id", "music_id", art_file) # => true if the cover art is being set for the first time, and false if simply updated
   # ```
-  def set_cover_art(user_id : Bytes, music_id : String, art_file : Bytes, art_file_type : String) : Bool
+  def set_cover_art(user_id : UInt8*, music_id : UInt8*, art_file : Bytes, art_file_type : String) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     # Get object id using the given parameters
     object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]
     object_id = Utils::Str.stringify(user_id, "/", music_id, "/cover-art", string_buffer: object_id_buffer.to_unsafe)
@@ -231,7 +251,10 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.update("user_id", "music_id", "title", "artist") # => true if update was successful
   # ```
-  def update(user_id : String, music_id : String, title : String | Nil, artist : String | Nil) : Bool
+  def update(user_id : UInt8*, music_id : UInt8*, title : String | Nil, artist : String | Nil) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     # Update metadata
     if !title.nil? && !artist.nil?
       result = @db.exec "UPDATE music SET title=$3,artist=$4 WHERE user_id=$1 AND music_id=$2", user_id, music_id, title, artist
@@ -252,7 +275,10 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.delete("user_id", "music_id") # => true if the user originally had a music file with the given music id
   # ```
-  def delete(user_id : String, music_id : String) : Bool
+  def delete(user_id : UInt8*, music_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     # Delete metadata
     result = @db.exec "DELETE FROM music WHERE user_id=$1 AND music_id=$2", user_id, music_id
 

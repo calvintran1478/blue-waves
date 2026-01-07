@@ -1,18 +1,23 @@
 require "uuid"
 require "./repository"
+require "../utils/constants"
 
 # Provides an easy-to-user interface for accessing the playlist table in the database.
 #
 # Contains a set of methods for working with the playlist table. All queries made to the
 # playlist table should be made though a PlaylistRepository object.
 class Repositories::PlaylistRepository < Repositories::Repository
+  include Utils::Constants
 
   # Returns whether a playlist with the given id exists in the user's collection
   #
   # ```
   # playlist_repository.exists_by_id("user_id", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_id" in their collection
   # ```
-  def exists_by_id(user_id : String, playlist_id : String) : Bool
+  def exists_by_id(user_id : UInt8*, playlist_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND playlist_id=$2)", user_id, playlist_id, as: Bool
   end
 
@@ -21,7 +26,11 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.contains_music_id("user_id", "playlist_id", "music_id") # => true if user with "user_id" has a playlist with "playlist_id" in their collection and it contains "music_id"
   # ```
-  def contains_music_id(user_id : String, playlist_id : String, music_id : String) : Bool
+  def contains_music_id(user_id : UInt8*, playlist_id : UInt8*, music_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3)", user_id, playlist_id, music_id, as: Bool
   end
 
@@ -31,7 +40,11 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.add_music("user_id", "playlist_name", "music_id") # => true if the music track exists and does not already exist in the playlist
   # ```
-  def add_music(user_id : String, playlist_id : String, music_id : String) : Bool
+  def add_music(user_id : UInt8*, playlist_id : UInt8*, music_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     query = <<-SQL
       INSERT INTO playlist_music (user_id, playlist_id, music_id, music_number)
       SELECT $1, $2, $3, (SELECT COALESCE(MAX(pm.music_number), -256) FROM playlist_music pm WHERE user_id=$4 AND playlist_id=$5) + 256
@@ -52,7 +65,10 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.exists_by_name_excluding_id("user_id", "playlist_name", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_name" in their collection (excluding the chosen playlist id)
   # ```
-  def exists_by_name_excluding_id(user_id : String, playlist_name : String, excluded_playlist_id : String)
+  def exists_by_name_excluding_id(user_id : UInt8*, playlist_name : String, excluded_playlist_id : UInt8*)
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    excluded_playlist_id = Bytes.new(excluded_playlist_id, PLAYLIST_ID_LENGTH)
+
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2 AND playlist_id<>$3)", user_id, playlist_name, excluded_playlist_id, as: Bool
   end
 
@@ -62,7 +78,9 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.create("user_id", "playlist_name") # => "<Playlist_ID>" if a playlist with the given name does not already exist in the user's collection
   # ```
-  def create(user_id : String, playlist_name : String) : (String | Nil)
+  def create(user_id : UInt8*, playlist_name : String) : (String | Nil)
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+
     playlist_id = Random::Secure.urlsafe_base64
     result = @db.exec "INSERT INTO playlists (playlist_id, name, user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO NOTHING", playlist_id, playlist_name, user_id
 
@@ -75,13 +93,17 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.list("user_id", context)
   # ```
-  def list(user_id : String, context : HTTP::Server::Context) : Nil
+  def list(user_id : UInt8*, output : IO) : Nil
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+
     @db.query("SELECT playlist_id, name FROM playlists WHERE user_id=$1 ORDER BY creation_time", user_id) do |rs|
       rs.each do
-        playlist_id, playlist_name = rs.read(String, String)
-        context.response.output << playlist_id
-        context.response.output.write_bytes(playlist_name.bytesize, IO::ByteFormat::NetworkEndian)
-        context.response.output << playlist_name
+        rs.read { |playlist_id, _| IO.copy(playlist_id, output) }
+
+        rs.read do |playlist_name, bytesize|
+          output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          IO.copy(playlist_name, output)
+        end
       end
     end
   end
@@ -94,29 +116,39 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.get("user_id", "playlist_id", context) # => true if the playlist exists
   # ```
-  def get(user_id : String, playlist_id : String, context : HTTP::Server::Context) : Bool
+  def get(user_id : UInt8*, playlist_id : UInt8*, context : HTTP::Server::Context) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+
     # Get playlist name
-    name = nil
+    found = false
     @db.query("SELECT name FROM playlists WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id) do |rs|
       rs.each do
-        name = rs.read(String)
+        rs.read do |name, bytesize|
+          context.response.content_type = "application/octet-stream"
+          context.response.status = HTTP::Status::OK
+          context.response.output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          IO.copy(name, context.response.output)
+          found = true
+        end
       end
     end
-    return false if name.nil?
-    context.response.content_type = "application/octet-stream"
-    context.response.status = HTTP::Status::OK
-    context.response.output.write_bytes(name.bytesize, IO::ByteFormat::NetworkEndian)
-    context.response.output << name
+    return false unless found
 
     # Get playlist music tracks
     @db.query("SELECT m.music_id, m.title, m.artist FROM music m INNER JOIN playlist_music pm ON m.music_id = pm.music_id WHERE pm.user_id=$1 AND pm.playlist_id=$2 ORDER BY pm.music_number", user_id, playlist_id) do |rs|
       rs.each do
-        music_id, title, artist = rs.read(String, String, String)
-        context.response.output << music_id
-        context.response.output.write_bytes(title.bytesize, IO::ByteFormat::NetworkEndian)
-        context.response.output << title
-        context.response.output.write_bytes(artist.bytesize, IO::ByteFormat::NetworkEndian)
-        context.response.output << artist
+        rs.read { |music_id, _| IO.copy(music_id, context.response.output) }
+
+        rs.read do |title, bytesize|
+          context.response.output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          IO.copy(title, context.response.output)
+        end
+
+        rs.read do |artist, bytesize|
+          context.response.output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          IO.copy(artist, context.response.output)
+        end
       end
     end
 
@@ -128,7 +160,10 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.update("user_id", "playlist_id", "playlist_name") # => true if update was successful
   # ```
-  def update(user_id : String, playlist_id : String, playlist_name : String) : Bool
+  def update(user_id : UInt8*, playlist_id : UInt8*, playlist_name : String) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+
     result = @db.exec "UPDATE playlists SET name=$3 WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id, playlist_name
 
     result.rows_affected != 0
@@ -139,7 +174,11 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.update_music("user_id", "playlist_id", "music_id", music_number, context)
   # ```
-  def update_music(user_id : String, playlist_id : String, music_id : String, music_number : Int32, context : HTTP::Server::Context) : Nil
+  def update_music(user_id : UInt8*, playlist_id : UInt8*, music_id : UInt8*, music_number : Int32, context : HTTP::Server::Context) : Nil
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     # Check for relative update: 0 -> swap with next, -1 -> swap with previous
     if music_number < 1
       # Select query based on which track to swap with
@@ -187,7 +226,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
       # Check for any update errors
       if result.rows_affected == 2
         context.response.status = HTTP::Status::NO_CONTENT
-      elsif contains_music_id(user_id, playlist_id, music_id)
+      elsif contains_music_id(user_id.to_unsafe, playlist_id.to_unsafe, music_id.to_unsafe)
         context.response.status = HTTP::Status::CONFLICT
         context.response.output << "Music position cannot be incremented/decremented further"
       else
@@ -202,11 +241,21 @@ class Repositories::PlaylistRepository < Repositories::Repository
         # Get information about existing music numbers
         original_music_number = nil
         music_numbers = [] of Int32
+        music_id_buffer = uninitialized UInt8[MUSIC_ID_LENGTH]
+        music_id_slice = Bytes.new(music_id_buffer, MUSIC_ID_LENGTH)
         cnn.query("SELECT music_id, music_number FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 ORDER BY music_number", user_id, playlist_id) do |rs|
           rs.each do
-            mi, mn = rs.read(String, Int32)
-            music_numbers << mn
-            original_music_number = music_numbers.size if mi == music_id end
+            rs.read do |music_id_io, _|
+              if original_music_number.nil?
+                music_id_io.read_fully(music_id_slice)
+                original_music_number = music_numbers.size if music_id_slice == music_id end
+              end
+            end
+
+            rs.read do |music_number_io, _|
+              music_numbers << music_number_io.read_bytes(Int32, IO::ByteFormat::NetworkEndian)
+            end
+          end
         end
 
         # Check for any errors
@@ -271,7 +320,10 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.delete("user_id", "playlist_id") # => true if the user originally had a playlist with the given playlist id
   # ```
-  def delete(user_id : String, playlist_id : String) : Bool
+  def delete(user_id : UInt8*, playlist_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+
     result = @db.exec "DELETE FROM playlists WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id
 
     result.rows_affected != 0
@@ -283,7 +335,11 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.remove_music("user_id", "playlist_id", "music_id") # => true if the user originally had "music_id" in their playlist with the given playlist id
   # ```
-  def remove_music(user_id : String, playlist_id : String, music_id : String) : Bool
+  def remove_music(user_id : UInt8*, playlist_id : UInt8*, music_id : UInt8*) : Bool
+    user_id = Bytes.new(user_id, USER_ID_LENGTH)
+    playlist_id = Bytes.new(playlist_id, PLAYLIST_ID_LENGTH)
+    music_id = Bytes.new(music_id, MUSIC_ID_LENGTH)
+
     result = @db.exec "DELETE FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3", user_id, playlist_id, music_id
 
     result.rows_affected != 0
