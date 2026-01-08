@@ -68,20 +68,20 @@ const AddPlaylistMusicModal = (props: { closeCallback: () => void, playlistId: s
 
                 if (musicIdsToExclude.includes(musicId)) {
                     // Skip music entry
-                    index += 4 + view.getInt32(index);
-                    index += 4 + view.getInt32(index);
+                    index += 1 + view.getUint8(index);
+                    index += 1 + view.getUint8(index);
                 } else {
                     // Decode title
-                    const titleLength = view.getInt32(index);
-                    const titleBytes = new Uint8Array(buffer, index + 4, titleLength);
+                    const titleLength = view.getUint8(index);
+                    const titleBytes = new Uint8Array(buffer, index + 1, titleLength);
                     const title = decoder.decode(titleBytes);
-                    index += 4 + titleLength;
+                    index += 1 + titleLength;
 
                     // Decode artist
-                    const artistLength = view.getInt32(index);
-                    const artistBytes = new Uint8Array(buffer, index + 4, artistLength);
+                    const artistLength = view.getUint8(index);
+                    const artistBytes = new Uint8Array(buffer, index + 1, artistLength);
                     const artist = decoder.decode(artistBytes);
-                    index += 4 + artistLength;
+                    index += 1 + artistLength;
 
                     // Add music entry
                     musicEntries.push({"music_id": musicId, "title": title, "artist": artist});
