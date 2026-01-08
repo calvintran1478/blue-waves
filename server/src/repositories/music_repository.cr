@@ -95,12 +95,12 @@ class Repositories::MusicRepository < Repositories::Repository
         rs.read { |music_id, _| IO.copy(music_id, output) }
 
         rs.read do |title, bytesize|
-          output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          output.write_byte(bytesize.to_u8)
           IO.copy(title, output)
         end
 
         rs.read do |artist, bytesize|
-          output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          output.write_byte(bytesize.to_u8)
           IO.copy(artist, output)
         end
       end

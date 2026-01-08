@@ -83,7 +83,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
         rs.read { |playlist_id, _| IO.copy(playlist_id, output) }
 
         rs.read do |playlist_name, bytesize|
-          output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          output.write_byte(bytesize.to_u8)
           IO.copy(playlist_name, output)
         end
       end
@@ -106,7 +106,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
         rs.read do |name, bytesize|
           context.response.content_type = "application/octet-stream"
           context.response.status = HTTP::Status::OK
-          context.response.output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          context.response.output.write_byte(bytesize.to_u8)
           IO.copy(name, context.response.output)
           found = true
         end
@@ -120,12 +120,12 @@ class Repositories::PlaylistRepository < Repositories::Repository
         rs.read { |music_id, _| IO.copy(music_id, context.response.output) }
 
         rs.read do |title, bytesize|
-          context.response.output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          context.response.output.write_byte(bytesize.to_u8)
           IO.copy(title, context.response.output)
         end
 
         rs.read do |artist, bytesize|
-          context.response.output.write_bytes(bytesize, IO::ByteFormat::NetworkEndian)
+          context.response.output.write_byte(bytesize.to_u8)
           IO.copy(artist, context.response.output)
         end
       end

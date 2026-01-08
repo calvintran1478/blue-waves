@@ -44,10 +44,10 @@ const PlaylistPage = () => {
             let index = 0;
 
             // Decode playlist name
-            const playlistNameLength = view.getInt32(index);
-            const playlistNameBytes = new Uint8Array(buffer, index + 4, playlistNameLength);
+            const playlistNameLength = view.getUint8(index);
+            const playlistNameBytes = new Uint8Array(buffer, index + 1, playlistNameLength);
             setPlaylistName(decoder.decode(playlistNameBytes));
-            index += 4 + playlistNameLength;
+            index += 1 + playlistNameLength;
 
             // Decode music entries
             while (index < buffer.byteLength) {
@@ -57,16 +57,16 @@ const PlaylistPage = () => {
                 index += 22;
 
                 // Decode title
-                const titleLength = view.getInt32(index);
-                const titleBytes = new Uint8Array(buffer, index + 4, titleLength);
+                const titleLength = view.getUint8(index);
+                const titleBytes = new Uint8Array(buffer, index + 1, titleLength);
                 const title = decoder.decode(titleBytes);
-                index += 4 + titleLength;
+                index += 1 + titleLength;
 
                 // Decode artist
-                const artistLength = view.getInt32(index);
-                const artistBytes = new Uint8Array(buffer, index + 4, artistLength);
+                const artistLength = view.getUint8(index);
+                const artistBytes = new Uint8Array(buffer, index + 1, artistLength);
                 const artist = decoder.decode(artistBytes);
-                index += 4 + artistLength;
+                index += 1 + artistLength;
 
                 // Add music entry
                 musicEntries.push({"music_id": musicId, "title": title, "artist": artist});

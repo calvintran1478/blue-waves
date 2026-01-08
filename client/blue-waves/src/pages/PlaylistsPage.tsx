@@ -41,10 +41,10 @@ const PlaylistsPage = () => {
                 index += 22;
 
                 // Decode playlist name
-                const nameLength = view.getInt32(index);
-                const nameBytes = new Uint8Array(buffer, index + 4, nameLength);
+                const nameLength = view.getUint8(index);
+                const nameBytes = new Uint8Array(buffer, index + 1, nameLength);
                 const name = decoder.decode(nameBytes);
-                index += 4 + nameLength;
+                index += 1 + nameLength;
 
                 // Add playlist
                 playlists.push({"playlist_id": playlistId, "name": name});
