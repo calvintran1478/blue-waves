@@ -11,19 +11,22 @@ interface MusicEntry {
 }
 
 const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resource<MusicEntry[]>, setMusicEntries: Setter<MusicEntry[] | undefined>}) => {
-    let title = "";
-    let artist = "";
-
     const [addMusicLoading, setAddMusicLoading] = createSignal(false);
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
+    let titleInput!: HTMLInputElement;
+    let artistInput!: HTMLInputElement;
     let musicInput!: HTMLInputElement;
     let artInput!: HTMLInputElement;
 
     const addMusic = async (event: Event) => {
         // Prevent refresh
         event.preventDefault();
+
+        // Get metadata input values
+        const title = titleInput.value;
+        const artist = artistInput.value;
 
         // Create form data
         const formData = new FormData();
@@ -44,7 +47,11 @@ const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resourc
         if (response.ok) {
             // Add music entry to list
             const newMusicEntries = [...props.musicEntries()!];
-            newMusicEntries!.unshift(await response!.json());
+            newMusicEntries!.unshift({
+                "music_id": await response.text(),
+                "title": title,
+                "artist": artist
+            });
             props.setMusicEntries(newMusicEntries);
 
             // Close modal
@@ -64,11 +71,11 @@ const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resourc
             <form onSubmit={addMusic} class="flex flex-col items-center">
                 <div class="flex justify-center m-4">
                     <label for="title" class="text-lg m-2">Title</label>
-                    <input id="title" class="border-2 m-2 w-60 h-8" onChange={(event) => {title = event.target.value}} maxlength={150} required/>
+                    <input id="title" ref={titleInput} class="border-2 m-2 w-60 h-8" maxlength={150} required/>
                 </div>
                 <div class="flex justify-center m-4">
                     <label for="artist" class="text-lg m-2">Artist</label>
-                    <input id="artist" class="border-2 m-2 w-60 h-8" onChange={(event) => {artist = event.target.value}} maxlength={100} required/>
+                    <input id="artist" ref={artistInput} class="border-2 m-2 w-60 h-8" maxlength={100} required/>
                 </div>
                 <div class="flex justify-center m-3">
                     <label for="musicfile" class="text-lg m-2">Music</label>

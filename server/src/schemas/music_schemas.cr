@@ -20,23 +20,6 @@ module Schemas::MusicSchemas
     end
   end
 
-  # Response body schema for server responses to /api/v1/users/music POST requests.
-  #
-  # Represents the music file entered into the database
-  struct AddMusicResponse
-
-    def initialize(@music_id : String, @title : String, @artist : String)
-    end
-
-    def to_s(io : IO) : Nil
-      io << "{"
-      io << "\"music_id\":\"" << @music_id << "\","
-      io << "\"title\":\"" << @title << "\","
-      io << "\"artist\":\"" << @artist << "\""
-      io << "}"
-    end
-  end
-
   # Request body schema for PUT requests sent to /api/v1/users/music/{music_id}/cover-art
   #
   # The given file is expected to be a png or jpeg file, and should be sent as

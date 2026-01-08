@@ -83,13 +83,9 @@ struct Controllers::MusicController < Controllers::Controller
     end
 
     # Send success response
-    context.response.content_type = "application/json"
+    context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::CREATED
-    context.response.output << AddMusicResponse.new(
-      music_id: music_id,
-      title: data.title,
-      artist: data.artist,
-    )
+    context.response.output << music_id
   end
 
   # Retreives the title and artist for each music file in the user's collection
