@@ -7,7 +7,7 @@ require "../utils/constants"
 class Middleware::AuthMiddleware
   include Utils::Constants
 
-  def initialize(@auth_db : Redis::PooledClient, @API_SECRET : String)
+  def initialize(@API_SECRET : String)
   end
 
   # Retreives the user id from the given HTTP server context

@@ -37,7 +37,7 @@ music_db = Awscr::S3::Client.new(
 )
 
 # Initialize middleware
-auth_middleware = Middleware::AuthMiddleware.new(auth_db, ENV["API_SECRET"])
+auth_middleware = Middleware::AuthMiddleware.new(ENV["API_SECRET"])
 token_buckets = Utils::Config.load_rate_limit_config("rate_limit.conf", auth_db)
 rate_limit_middleware = Middleware::RateLimitMiddleware.new(auth_db, token_buckets)
 
