@@ -80,16 +80,7 @@ class PG::ResultSet < ::DB::ResultSet
     @column_index
   end
 
-  def read
-    col_bytesize = conn.read_i32
-    if col_bytesize == -1
-      @column_index += 1
-      return nil
-    end
-
-    safe_read(col_bytesize) do |io|
-      decoder.decode(io, col_bytesize, oid)
-    end
+  def read : Nil
   rescue e : IO::Error
     raise DB::ConnectionLost.new(statement.connection, cause: e)
   end
@@ -98,60 +89,14 @@ class PG::ResultSet < ::DB::ResultSet
     col_bytesize = conn.read_i32
     @sized_io.read_remaining = col_bytesize.to_u64
 
-    yield @sized_io, col_bytesize
+    value = yield @sized_io, col_bytesize
 
     conn.soc.skip(@sized_io.read_remaining) if @sized_io.read_remaining > 0
     @column_index += 1
+
+    value
   rescue e : IO::Error
     raise DB::ConnectionLost.new(statement.connection, cause: e)
-  end
-
-  def read(t : String.class) : String
-    value = read(String | Slice(UInt8))
-
-    case value
-    when Slice(UInt8)
-      String.new(value)
-    else
-      value
-    end
-  end
-
-  def read(t : String?.class) : String?
-    value = read(String | Slice(UInt8) | Nil)
-
-    case value
-    when Slice(UInt8)
-      String.new(value)
-    else
-      value
-    end
-  end
-
-  private def safe_read(col_bytesize)
-    @sized_io.read_remaining = col_bytesize.to_u64
-
-    begin
-      yield @sized_io
-    ensure
-      # An exception might happen while decoding the value:
-      # 1. Make sure to skip the column bytes
-      # 2. Make sure to increment the column index
-      conn.soc.skip(@sized_io.read_remaining) if @sized_io.read_remaining > 0
-      @column_index += 1
-    end
-  end
-
-  private def field(index = @column_index)
-    @fields.not_nil![index]
-  end
-
-  private def decoder(index = @column_index)
-    Decoders.from_oid(oid(index))
-  end
-
-  private def oid(index = @column_index)
-    field(index).type_oid
   end
 
   private def skip

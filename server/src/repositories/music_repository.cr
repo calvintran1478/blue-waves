@@ -22,7 +22,9 @@ class Repositories::MusicRepository < Repositories::Repository
   # music_repository.exists_by_id("user_id", "music_id") # => true if user with "user_id" has "music_id" in their collection
   # ```
   def exists_by_id(user_id : Bytes, music_id : Bytes) : Bool
-    @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND music_id=$2)", user_id, music_id, as: Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM music WHERE user_id=$1 AND music_id=$2)", user_id, music_id do |rs|
+      rs.read { |io, _| io.read_byte == 1}
+    end
   end
 
   # Adds a music file to the user's collection.

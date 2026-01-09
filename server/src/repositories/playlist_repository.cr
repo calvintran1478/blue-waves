@@ -15,7 +15,9 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # playlist_repository.exists_by_id("user_id", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_id" in their collection
   # ```
   def exists_by_id(user_id : Bytes, playlist_id : Bytes) : Bool
-    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND playlist_id=$2)", user_id, playlist_id, as: Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND playlist_id=$2)", user_id, playlist_id do |rs|
+      rs.read { |io, _| io.read_byte == 1 }
+    end
   end
 
   # Returns whether the given music file exists in the user's playlist
@@ -24,7 +26,9 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # playlist_repository.contains_music_id("user_id", "playlist_id", "music_id") # => true if user with "user_id" has a playlist with "playlist_id" in their collection and it contains "music_id"
   # ```
   def contains_music_id(user_id : Bytes, playlist_id : Bytes, music_id : Bytes) : Bool
-    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3)", user_id, playlist_id, music_id, as: Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlist_music WHERE user_id=$1 AND playlist_id=$2 AND music_id=$3)", user_id, playlist_id, music_id do |rs|
+      rs.read { |io, _| io.read_byte == 1 }
+    end
   end
 
   # Adds a music track to a playlist in the user's collection. Returns whether
@@ -54,8 +58,10 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.exists_by_name_excluding_id("user_id", "playlist_name", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_name" in their collection (excluding the chosen playlist id)
   # ```
-  def exists_by_name_excluding_id(user_id : Bytes, playlist_name : String, excluded_playlist_id : Bytes)
-    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2 AND playlist_id<>$3)", user_id, playlist_name, excluded_playlist_id, as: Bool
+  def exists_by_name_excluding_id(user_id : Bytes, playlist_name : String, excluded_playlist_id : Bytes) : Bool
+    @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2 AND playlist_id<>$3)", user_id, playlist_name, excluded_playlist_id do |rs|
+      rs.read { |io, _| io.read_byte == 1 }
+    end
   end
 
   # Adds a playlist to the user's collection. Returns the newly created playlist

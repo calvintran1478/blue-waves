@@ -477,12 +477,6 @@ module PQ
       write_null
     end
 
-    # result_format can be 0 or 1. We pick 1 by default to get binary results
-    # as most data types are much smaller over the wire and require less
-    # processing on either end. Nowhere inside the this shard itself uses 0,
-    # however it is a parameter so that people who want to use the protocol
-    # directly can choose text results. The addition of this param though is
-    # experimental, and may go away in future releases.
     def send_bind_message(params : Enumerable(Bytes) | Tuple())
       nparams = params.size
       total_size = 4 * nparams
