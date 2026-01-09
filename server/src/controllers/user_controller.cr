@@ -105,15 +105,17 @@ struct Controllers::UserController < Controllers::Controller
     return if data.nil?
 
     # Look up user in database
-    user_id, password = @user_repository.get_login_password(data.email)
-    if user_id.nil? || password.nil?
+    password_buffer = uninitialized UInt8[PASSWORD_HASH_STRING_LENGTH]
+    user_id, password_hash = @user_repository.get_login_password(data.email, password_buffer.to_unsafe)
+    if user_id == ""
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "User with email not found"
       return
     end
 
     # Verify user password
-    if !password.verify(data.password)
+    password = Crypto::Bcrypt::Password.new(password_hash)
+    unless password.verify(data.password)
       context.response.status = HTTP::Status::UNAUTHORIZED
       context.response.output << "Incorrect password"
       return

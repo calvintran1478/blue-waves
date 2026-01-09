@@ -27,6 +27,9 @@ module Utils::Constants
   MAX_FIRST_NAME_LENGTH = 50
   MAX_LAST_NAME_LENGTH = 50
 
+  # User controller constants
+  PASSWORD_HASH_STRING_LENGTH = 73
+
   # Music validator constants
   MAX_MUSIC_FILE_SIZE = 25_000_000 # 25,000,000 bytes, or 25MB
   MAX_COVER_ART_FILE_SIZE = 8_000_000 # 8,000,000 bytes, or 8MB

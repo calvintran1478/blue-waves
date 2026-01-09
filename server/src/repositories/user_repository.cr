@@ -43,28 +43,30 @@ class Repositories::UserRepository < Repositories::Repository
   # ```
   # user_repository.get_login_password("user@email.com") # => "user_id", "hashed_password"
   # ```
-  def get_login_password(email : String) : (Tuple(String, Crypto::Bcrypt::Password) | Tuple(Nil, Nil))
-    @db.query_one "SELECT user_id, password FROM users WHERE email=$1", email do |rs|
-      # Read user id
-      user_id = rs.read do |io, _|
-        uuid_buffer = uninitialized UInt8[16]
-        uuid_bytes = Bytes.new(uuid_buffer.to_unsafe, 16)
-        io.read_fully(uuid_bytes)
-        UUID.new(uuid_bytes).to_s
-      end
-
-      # Read password
-      password = rs.read do |io, bytesize|
-        password_hash = String.new(bytesize) do |buffer|
-          io.read_fully(Slice.new(buffer, bytesize))
-          {bytesize, bytesize}
+  def get_login_password(email : String, password_buffer : UInt8*) : Tuple(String, String)
+    user_id, password_hash = "", ""
+    @db.query "SELECT user_id, password FROM users WHERE email=$1", email do |rs|
+      rs.each do
+        # Read user id
+        user_id = rs.read do |io, _|
+          uuid_buffer = uninitialized UInt8[16]
+          uuid_bytes = Bytes.new(uuid_buffer.to_unsafe, 16)
+          io.read_fully(uuid_bytes)
+          UUID.new(uuid_bytes).to_s
         end
-        Crypto::Bcrypt::Password.new(password_hash)
-      end
 
-      {user_id, password}
+        # Read password
+        password_hash = rs.read do |io, _|
+          string_buffer = password_buffer.as(String)
+          string_buffer.initialize_header(60, 60)
+          io.read_fully(Bytes.new(string_buffer.to_unsafe, 60))
+          string_buffer.to_unsafe[60] = 0_u8
+
+          string_buffer
+        end
+      end
     end
-  rescue DB::NoResultsError
-    return nil, nil
+
+    {user_id, password_hash}
   end
 end
