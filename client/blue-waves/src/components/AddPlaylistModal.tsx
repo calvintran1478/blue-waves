@@ -9,8 +9,7 @@ interface Playlist {
 }
 
 const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resource<Playlist[]>, setPlaylists: Setter<Playlist[] | undefined> }) => {
-
-    let name = "";
+    let nameInput!: HTMLInputElement;
 
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
 
@@ -18,6 +17,7 @@ const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resourc
         // Prevent refresh
         event.preventDefault();
 
+        const name = nameInput.value;
         const response = await fetch(`${apiDomain}/api/v1/users/playlists`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
@@ -27,11 +27,9 @@ const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resourc
         if (response.ok) {
             // Add playlist entry to list
             const newPlaylists = [...props.playlists()!];
-            const response_body = await response.text();
-            const newline_index = response_body.indexOf('\n');
             const playlist = {
-                playlist_id: response_body.substring(0, newline_index),
-                name: response_body.substring(newline_index + 1)
+                playlist_id: await response.text(),
+                name: name
             }
             newPlaylists!.push(playlist);
             props.setPlaylists(newPlaylists);
@@ -52,7 +50,7 @@ const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resourc
             <form onSubmit={addPlaylist} class="flex flex-col items-center">
                 <div class="flex items-center m-5">
                     <label for="name" class="text-lg m-2">Name</label>
-                    <input id="name" class="border-2 m-2 w-60 h-8" onChange={(event) => {name = event.target.value}} maxlength={80} required/>
+                    <input id="name" ref={nameInput} class="border-2 m-2 w-60 h-8" maxlength={80} required/>
                 </div>
                 <button class="inline-flex items-center border-2 rounded m-4 p-3 bg-neutral-400">Add Playlist</button>
             </form>

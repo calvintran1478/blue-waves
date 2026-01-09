@@ -83,7 +83,7 @@ struct Controllers::PlaylistController < Controllers::Controller
     # Send success responses
     context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::CREATED
-    context.response.output << playlist_id << '\n' << data.playlist_name
+    context.response.output << playlist_id
   end
 
   # Adds a music track to one of the user's playlists
