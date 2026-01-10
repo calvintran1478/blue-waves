@@ -152,15 +152,16 @@ struct Controllers::UserController < Controllers::Controller
   # Path: /api/v1/users/token
   def refresh_token(context : HTTP::Server::Context) : Nil
     # Parse claims if token is not expired
-    refresh_token_cookie = context.request.cookies["refresh-token"]?
-    if refresh_token_cookie.nil?
+    cookie_header = context.request.headers["Cookie"]?
+    if cookie_header.nil? || !cookie_header.starts_with?("refresh-token=") || cookie_header.size != 146
       context.response.status = HTTP::Status::UNAUTHORIZED
       return
     end
+    refresh_token_cookie = cookie_header.to_unsafe + "refresh-token=".size
 
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
-    payload = Utils::Token::RefreshClaims.decode(refresh_token_cookie.value, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
+    payload = Utils::Token::RefreshClaims.decode(refresh_token_cookie, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
 
     if payload.nil?
       context.response.status = HTTP::Status::UNAUTHORIZED
@@ -239,9 +240,10 @@ struct Controllers::UserController < Controllers::Controller
     # Invalidate token family if refresh token is not expired
     user_id_buffer = uninitialized UInt8[USER_ID_STRING_LENGTH]
     token_family_id_buffer = uninitialized UInt8[TOKEN_FAMILY_ID_STRING_LENGTH]
-    refresh_token_cookie = context.request.cookies["refresh-token"]?
-    if !refresh_token_cookie.nil?
-      payload = Utils::Token::RefreshClaims.decode(refresh_token_cookie.value, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
+    cookie_header = context.request.headers["Cookie"]?
+    if !cookie_header.nil? && cookie_header.starts_with?("refresh-token=") && cookie_header.size == 146
+      refresh_token_cookie = cookie_header.to_unsafe + "refresh-token=".size
+      payload = Utils::Token::RefreshClaims.decode(refresh_token_cookie, @API_SECRET, user_id_buffer.to_unsafe, token_family_id_buffer.to_unsafe)
 
       if !payload.nil?
         @auth_db.del(payload.token_family_id)

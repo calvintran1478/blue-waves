@@ -94,11 +94,10 @@ module Utils::Token
     #
     # Upon success this returns the refresh claims of the token. Otherwise this
     # function returns nil
-    def RefreshClaims.decode(token : String, key : String, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : (RefreshClaims | Nil)
+    def RefreshClaims.decode(token : UInt8*, key : String, user_id_buffer : UInt8*, token_family_id_buffer : UInt8*) : (RefreshClaims | Nil)
       # Parse token into its two segments
-      return if token.size != 132
-      encoded_payload = Bytes.new(token.to_unsafe, 89)
-      encoded_signature = Bytes.new(token.to_unsafe + 89, 43)
+      encoded_payload = Bytes.new(token, 89)
+      encoded_signature = Bytes.new(token + 89, 43)
 
       # Verify signature
       expected_signature_buffer = uninitialized UInt8[43]
