@@ -120,7 +120,6 @@ struct Controllers::PlaylistController < Controllers::Controller
     end
 
     # Send success response
-    context.response.content_type = "text/plain"
     context.response.status = HTTP::Status::CREATED
   end
 
