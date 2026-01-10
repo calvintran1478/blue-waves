@@ -25,9 +25,9 @@ module Utils::Token
       Utils::Encoding.urlsafe_encode_int64(@exp, buffer.to_unsafe + USER_ID_LENGTH)
       encoded_payload = Bytes.new(buffer.to_unsafe, 47)
 
-      # Write signature and encoded payload to the provided IO
-      Utils::Encoding.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), io)
+      # Write encoded payload and signature to the provided IO
       io.write(encoded_payload)
+      Utils::Encoding.urlsafe_encode(OpenSSL::HMAC.digest(:sha256, key, encoded_payload), io)
     end
 
     # Parses the provided access token for its contents
@@ -36,8 +36,8 @@ module Utils::Token
     # user id to given buffer. Otherwise this function returns nil
     def AccessClaims.decode(token : UInt8*, key : String) : (Int64 | Nil)
       # Parse token into its two segments
-      encoded_signature = Bytes.new(token, 43)
-      encoded_payload = Bytes.new(token + 43, 47)
+      encoded_payload = Bytes.new(token, 47)
+      encoded_signature = Bytes.new(token + 47, 43)
 
       # Verify signature
       expected_signature_buffer = uninitialized UInt8[43]

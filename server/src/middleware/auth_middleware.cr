@@ -40,6 +40,6 @@ class Middleware::AuthMiddleware
       return
     end
 
-    Bytes.new(auth_header_ptr + 50, USER_ID_LENGTH)
+    Bytes.new(access_token_ptr, USER_ID_LENGTH)
   end
 end
