@@ -30,6 +30,7 @@ const RegisterPage = () => {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             credentials: "omit",
+            referrerPolicy: "no-referrer",
             body: `${email}\n${password}\n${firstName}\n${lastName}`
         });
 

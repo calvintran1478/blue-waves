@@ -22,7 +22,8 @@ const HomePage = () => {
         const response = await fetch(`${apiDomain}/api/v1/users/logout`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
-            credentials: "include"
+            credentials: "include",
+            referrerPolicy: "no-referrer"
         });
 
         if (response.ok) {

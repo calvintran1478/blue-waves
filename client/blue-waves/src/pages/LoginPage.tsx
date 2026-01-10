@@ -30,7 +30,8 @@ const LoginPage = () => {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
             body: `${email}\n${password}`,
-            credentials: "include"
+            credentials: "include",
+            referrerPolicy: "no-referrer"
         });
 
         if (response.ok) {

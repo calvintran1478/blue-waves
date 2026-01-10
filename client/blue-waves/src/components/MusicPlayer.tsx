@@ -70,7 +70,8 @@ const MusicPlayer = () => {
             // If no cached value exists perform a normal request for the music file
             const response = await fetch(`${apiDomain}/api/v1/users/music/${mid}`, {
                 headers: { "Authorization": `Bearer ${token()}` },
-                credentials: "omit"
+                credentials: "omit",
+                referrerPolicy: "no-referrer"
             });
 
             if (response.ok) {
@@ -111,7 +112,8 @@ const MusicPlayer = () => {
                     "Authorization": `Bearer ${token()}`,
                     "If-Modified-Since": coverArtFileEntry["last_modified"]
                 },
-                credentials: "omit"
+                credentials: "omit",
+                referrerPolicy: "no-referrer"
             });
 
             if (response.ok) {
@@ -135,7 +137,8 @@ const MusicPlayer = () => {
             // If no cached value exists perform a normal request for the music file
             const response = await fetch(`${apiDomain}/api/v1/users/music/${mid}/cover-art`, {
                 headers: { "Authorization": `Bearer ${token()}` },
-                credentials: "omit"
+                credentials: "omit",
+                referrerPolicy: "no-referrer"
             });
 
             if (response.ok) {

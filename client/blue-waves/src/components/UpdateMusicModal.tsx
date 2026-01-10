@@ -42,6 +42,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
                 "Authorization": `Bearer ${token()}`
             },
             credentials: "omit",
+            referrerPolicy: "no-referrer",
             body: `${title !== originalTitle ? `1${title}` : "0"}\n${artist !== originalArtist ? `1${artist}` : "0"}`
         });
 
@@ -63,7 +64,8 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         const response = await fetch(`${apiDomain}/api/v1/users/music/${props.musicId()}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token()}` },
-            credentials: "omit"
+            credentials: "omit",
+            referrerPolicy: "no-referrer"
         });
 
         if (response.ok) {
@@ -99,6 +101,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
             method: "PUT",
             headers: { "Authorization": `Bearer ${token()}` },
             credentials: "omit",
+            referrerPolicy: "no-referrer",
             body: artInput.files![0]
         })
 

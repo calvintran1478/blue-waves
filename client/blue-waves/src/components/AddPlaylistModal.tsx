@@ -22,6 +22,7 @@ const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resourc
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
             credentials: "omit",
+            referrerPolicy: "no-referrer",
             body: name
         });
 

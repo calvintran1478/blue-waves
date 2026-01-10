@@ -29,6 +29,7 @@ const UpdatePlaylistModal = (props: { playlistId: string, closeCallback: () => v
                     "Authorization": `Bearer ${token()}`
                 },
                 credentials: "omit",
+                referrerPolicy: "no-referrer",
                 body: name
             });
 
@@ -50,7 +51,8 @@ const UpdatePlaylistModal = (props: { playlistId: string, closeCallback: () => v
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${props.playlistId}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token()}` },
-            credentials: "omit"
+            credentials: "omit",
+            referrerPolicy: "no-referrer"
         });
 
         if (response.ok) {

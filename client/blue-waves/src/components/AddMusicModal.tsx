@@ -42,6 +42,7 @@ const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resourc
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
             credentials: "omit",
+            referrerPolicy: "no-referrer",
             body: formData
         });
 
