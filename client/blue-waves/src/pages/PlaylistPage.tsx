@@ -33,7 +33,8 @@ const PlaylistPage = () => {
 
         // Get playlist music
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}`, {
-            headers: { "Authorization": `Bearer ${token()}` }
+            headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit"
         });
 
         if (response.ok) {
@@ -98,6 +99,7 @@ const PlaylistPage = () => {
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}/music/${musicId}`, {
             method: "PATCH",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit",
             body: buffer
         });
 
@@ -140,6 +142,7 @@ const PlaylistPage = () => {
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}/music/${musicId}`, {
             method: "PATCH",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit",
             body: buffer
         });
 
@@ -172,7 +175,8 @@ const PlaylistPage = () => {
         // Remove music from playlist
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${playlistId}/music/${musicId}`, {
             method: "DELETE",
-            headers: { "Authorization": `Bearer ${token()}` }
+            headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit"
         });
 
         if (response.ok) {

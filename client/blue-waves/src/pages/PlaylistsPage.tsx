@@ -24,7 +24,8 @@ const PlaylistsPage = () => {
 
         // Get playlists
         const response = await fetch(`${apiDomain}/api/v1/users/playlists`, {
-            headers: { "Authorization": `Bearer ${token()}` }
+            headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit"
         });
 
         if (response.ok) {

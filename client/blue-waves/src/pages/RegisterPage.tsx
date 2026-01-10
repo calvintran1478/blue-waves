@@ -29,6 +29,7 @@ const RegisterPage = () => {
         const response = await fetch(`${apiDomain}/api/v1/users`, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
+            credentials: "omit",
             body: `${email}\n${password}\n${firstName}\n${lastName}`
         });
 

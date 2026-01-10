@@ -21,6 +21,7 @@ const AddPlaylistModal = (props: { closeCallback: () => void, playlists: Resourc
         const response = await fetch(`${apiDomain}/api/v1/users/playlists`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit",
             body: name
         });
 

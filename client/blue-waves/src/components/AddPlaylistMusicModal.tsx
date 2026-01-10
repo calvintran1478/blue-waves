@@ -28,6 +28,7 @@ const AddPlaylistMusicModal = (props: { closeCallback: () => void, playlistId: s
         const response = await fetch(`${apiDomain}/api/v1/users/playlists/${props.playlistId}/music`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit",
             body: selectedMusicId
         });
 
@@ -49,7 +50,8 @@ const AddPlaylistMusicModal = (props: { closeCallback: () => void, playlistId: s
     const fetchNewMusic = async () => {
         // Get music entries
         const response = await fetch(`${apiDomain}/api/v1/users/music`, {
-            headers: { "Authorization": `Bearer ${token()}` }
+            headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit"
         });
 
         if (response.ok) {

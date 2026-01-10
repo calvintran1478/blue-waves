@@ -41,6 +41,7 @@ const AddMusicModal = (props: { closeCallback: () => void, musicEntries: Resourc
         const response = await fetch(`${apiDomain}/api/v1/users/music`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit",
             body: formData
         });
 

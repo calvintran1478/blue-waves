@@ -41,6 +41,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
                 "Content-Type": "text/plain",
                 "Authorization": `Bearer ${token()}`
             },
+            credentials: "omit",
             body: `${title !== originalTitle ? `1${title}` : "0"}\n${artist !== originalArtist ? `1${artist}` : "0"}`
         });
 
@@ -62,6 +63,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         const response = await fetch(`${apiDomain}/api/v1/users/music/${props.musicId()}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit"
         });
 
         if (response.ok) {
@@ -96,6 +98,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
         const response = await fetch(`${apiDomain}/api/v1/users/music/${props.musicId()}/cover-art`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${token()}` },
+            credentials: "omit",
             body: artInput.files![0]
         })
 
