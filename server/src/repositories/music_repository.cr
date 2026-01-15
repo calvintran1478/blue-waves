@@ -32,7 +32,7 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.create("music_title", "artist", music_file, "user_id")
   # ```
-  def create(title : String, artist : String, music_file : Bytes, art_file : Bytes | Nil, music_file_type : String, art_file_type : String | Nil, user_id : Bytes) : (String | Nil)
+  def create(title : Bytes, artist : Bytes, music_file : Bytes, art_file : Bytes | Nil, music_file_type : String, art_file_type : String | Nil, user_id : Bytes) : (String | Nil)
     @db.transaction do |tx|
       # Store metadata about the music file
       music_id = Random::Secure.urlsafe_base64
@@ -237,13 +237,13 @@ class Repositories::MusicRepository < Repositories::Repository
   # ```
   # music_repository.update("user_id", "music_id", "title", "artist") # => true if update was successful
   # ```
-  def update(user_id : Bytes, music_id : Bytes, title : String | Nil, artist : String | Nil) : Bool
+  def update(user_id : Bytes, music_id : Bytes, title : Bytes, artist : Bytes) : Bool
     # Update metadata
-    if !title.nil? && !artist.nil?
+    if title.size != 0 && artist.size != 0
       result = @db.exec "UPDATE music SET title=$3,artist=$4 WHERE user_id=$1 AND music_id=$2", user_id, music_id, title, artist
-    elsif !title.nil? && artist.nil?
+    elsif title.size != 0 && artist.size == 0
       result = @db.exec "UPDATE music SET title=$3 WHERE user_id=$1 AND music_id=$2", user_id, music_id, title
-    elsif title.nil? && !artist.nil?
+    elsif title.size == 0 && artist.size != 0
       result = @db.exec "UPDATE music SET artist=$3 WHERE user_id=$1 AND music_id=$2", user_id, music_id, artist
     else
       return false

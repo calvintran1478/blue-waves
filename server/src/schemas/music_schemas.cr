@@ -8,15 +8,15 @@ module Schemas::MusicSchemas
   # account type. These fields should be sent as form data.
   struct AddMusicRequest
 
-    getter title : String
-    getter artist : String
+    getter title : Bytes
+    getter artist : Bytes
     getter music_file : Bytes
     getter art_file : Bytes | Nil
     getter music_file_type : String
     getter art_file_type : String | Nil
     getter file_buffer : UInt8*
 
-    def initialize(@title : String, @artist : String, @music_file : Bytes, @art_file : Bytes | Nil, @music_file_type : String, @art_file_type : String | Nil, @file_buffer : UInt8*)
+    def initialize(@title : Bytes, @artist : Bytes, @music_file : Bytes, @art_file : Bytes | Nil, @music_file_type : String, @art_file_type : String | Nil, @file_buffer : UInt8*)
     end
   end
 
@@ -38,10 +38,10 @@ module Schemas::MusicSchemas
   # title is expected be non blank
   struct UpdateMusicRequest
 
-    getter title : String | Nil
-    getter artist : String | Nil
+    getter title : Bytes
+    getter artist : Bytes
 
-    def initialize(@title : String | Nil, @artist : String | Nil)
+    def initialize(@title : Bytes, @artist : Bytes)
     end
   end
 end

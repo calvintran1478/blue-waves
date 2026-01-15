@@ -3,24 +3,11 @@ require "http/server"
 require "http/status"
 require "../schemas/music_schemas"
 require "../utils/constants"
+require "../utils/buffer"
 
 module Validators::MusicValidator
   include Schemas::MusicSchemas
   include Utils::Constants
-
-  private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
-    curr_buffer = Bytes.new(buffer, limit)
-    remaining = limit
-    bytes_read = io.read(curr_buffer[0, Math.min(curr_buffer.size, Math.max(remaining, 0))])
-
-    while bytes_read > 0
-      remaining -= bytes_read
-      curr_buffer += bytes_read
-      bytes_read = io.read(curr_buffer[0, Math.min(curr_buffer.size, Math.max(remaining, 0))])
-    end
-
-    limit - remaining
-  end
 
   @[AlwaysInline]
   private def valid_png(art_file : Bytes) : Bool
@@ -86,7 +73,7 @@ module Validators::MusicValidator
           # Read music file bytes
           byte_limit = Math.min(buffer_size - bytes_read, MAX_MUSIC_FILE_SIZE + 1)
           music_file_buffer = file_buffer + bytes_read
-          music_file_size = read_io_to_buffer(part.body, music_file_buffer, byte_limit.to_i64)
+          music_file_size = Utils::Buffer.read_io_to_buffer(part.body, music_file_buffer, byte_limit.to_i64)
           music_file = Bytes.new(music_file_buffer, music_file_size)
 
           # Check for valid music file
@@ -124,7 +111,7 @@ module Validators::MusicValidator
           # Read art file bytes
           byte_limit = Math.min(buffer_size - bytes_read, MAX_COVER_ART_FILE_SIZE + 1)
           art_file_buffer = file_buffer + bytes_read
-          art_file_size = read_io_to_buffer(part.body, art_file_buffer, byte_limit.to_i64)
+          art_file_size = Utils::Buffer.read_io_to_buffer(part.body, art_file_buffer, byte_limit.to_i64)
           art_file = Bytes.new(art_file_buffer, art_file_size)
 
           # Check for valid image file
@@ -144,34 +131,26 @@ module Validators::MusicValidator
           bytes_read += art_file_size
         when "artist"
           # Read artist bytes
-          artist_buffer = (add_music_request_buffer + MAX_TITLE_STRING_LENGTH).as(String).to_unsafe
-          artist_bytesize = read_io_to_buffer(part.body, artist_buffer, MAX_ARTIST_LENGTH + 1).to_i32
+          artist_buffer = add_music_request_buffer + MAX_TITLE_LENGTH
+          artist_bytesize = Utils::Buffer.read_io_to_buffer(part.body, artist_buffer, MAX_ARTIST_LENGTH + 1).to_i32
           if artist_bytesize > MAX_ARTIST_LENGTH
             LibC.free(file_buffer) unless file_buffer.nil?
             context.response.status = HTTP::Status::BAD_REQUEST
             context.response.output << "Artist cannot exceed 100 characters"
             return
           end
-          artist_buffer[artist_bytesize] = 0_u8
-
-          # Initialize artist string header
-          artist = (add_music_request_buffer + MAX_TITLE_STRING_LENGTH).as(String)
-          artist.initialize_header(artist_bytesize, artist_bytesize)
+          artist = Bytes.new(artist_buffer, artist_bytesize)
         when "title"
           # Read title bytes
-          title_buffer = add_music_request_buffer.as(String).to_unsafe
-          title_bytesize = read_io_to_buffer(part.body, title_buffer, MAX_TITLE_LENGTH + 1).to_i32
+          title_buffer = add_music_request_buffer
+          title_bytesize = Utils::Buffer.read_io_to_buffer(part.body, title_buffer, MAX_TITLE_LENGTH + 1).to_i32
           if title_bytesize > MAX_TITLE_LENGTH
             LibC.free(file_buffer) unless file_buffer.nil?
             context.response.status = HTTP::Status::BAD_REQUEST
             context.response.output << "Title cannot exceed 150 characters"
             return
           end
-          title_buffer[title_bytesize] = 0_u8
-
-          # Initialize title string header
-          title = add_music_request_buffer.as(String)
-          title.initialize_header(title_bytesize, title_bytesize)
+          title = Bytes.new(title_buffer, title_bytesize)
         end
       end
     rescue
@@ -212,14 +191,14 @@ module Validators::MusicValidator
     end
 
     # Check that the title and artist fields exist and are not blank
-    if title.nil? || title.blank?
+    if title.nil? || Utils::Buffer.blank?(title)
       LibC.free(file_buffer)
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Title cannot be blank"
       return
     end
 
-    if artist.nil? || artist.blank?
+    if artist.nil? || Utils::Buffer.blank?(artist)
       LibC.free(file_buffer)
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Artist cannot be blank"
@@ -231,6 +210,13 @@ module Validators::MusicValidator
   end
 
   def validate_set_cover_art_request(context : HTTP::Server::Context) : (SetCoverArtRequest | Nil)
+    # Get request body
+    if context.request.body.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+    request_body = context.request.body.as(IO)
+
     # Check for correct file type
     content_type = context.request.headers["Content-Type"]?
     if content_type != "image/jpeg" && content_type != "image/png"
@@ -259,7 +245,7 @@ module Validators::MusicValidator
       return
     end
 
-    art_file_size = read_io_to_buffer(context.request.body.as(IO), art_file_buffer, byte_limit.to_i64)
+    art_file_size = Utils::Buffer.read_io_to_buffer(request_body, art_file_buffer, byte_limit.to_i64)
     art_file = Bytes.new(art_file_buffer, art_file_size)
 
     # Check that the cover art file is non-empty and satisfies size limits
@@ -294,65 +280,49 @@ module Validators::MusicValidator
 
   def validate_update_music_request(context : HTTP::Server::Context, update_music_buffer : UInt8*) : (UpdateMusicRequest | Nil)
     # Get request body
-    work_buffer = uninitialized UInt8[UPDATE_MUSIC_WORK_BUFFER_SIZE]
-    curr_buffer = work_buffer.to_unsafe
-    bytes_read = read_io_to_buffer(context.request.body.as(IO), curr_buffer, UPDATE_MUSIC_WORK_BUFFER_SIZE)
+    if context.request.body.nil?
+      context.response.status = HTTP::Status::BAD_REQUEST
+      return
+    end
+    request_body = context.request.body.as(IO)
 
-    newline_ptr = LibC.memchr(curr_buffer, '\n'.ord, Math.min(MAX_TITLE_LENGTH + 2, bytes_read)).as(UInt8*)
+    # Search for delimiting newline character
+    bytes_read = Utils::Buffer.read_io_to_buffer(request_body, update_music_buffer, UPDATE_MUSIC_REQUEST_BUFFER_SIZE)
+    newline_ptr = LibC.memchr(update_music_buffer, '\n'.ord, Math.min(MAX_TITLE_LENGTH + 2, bytes_read)).as(UInt8*)
     if newline_ptr.null?
       context.response.status = HTTP::Status::BAD_REQUEST
       return
     end
 
     # Parse title
-    title_length = (newline_ptr - curr_buffer) - 1
-    if title_length == -1 || (curr_buffer[0] != 48 && curr_buffer[0] != 49)
+    title = Bytes.new(update_music_buffer, newline_ptr - update_music_buffer)
+    if title.size != 0 && Utils::Buffer.blank?(title)
       context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Title cannot be blank"
+      return
+    elsif title.size > MAX_TITLE_LENGTH
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Title cannot exceed 150 characters"
       return
     end
-
-    title_buffer = update_music_buffer
-    title = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(curr_buffer + 1, title_buffer, title_length.to_i32)
 
     # Parse artist
-    curr_buffer = newline_ptr + 1
-    artist_length = bytes_read - title_length - 3
-    if artist_length == -1 || (curr_buffer[0] != 48 && curr_buffer[0] != 49)
+    artist = Bytes.new(newline_ptr + 1, bytes_read - title.bytesize - 1)
+    if artist.size != 0 && Utils::Buffer.blank?(artist)
       context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Artist cannot be blank"
+      return
+    elsif artist.size > MAX_ARTIST_LENGTH
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Artist cannot exceed 100 characters"
       return
     end
 
-    artist_buffer = update_music_buffer + MAX_TITLE_STRING_LENGTH
-    artist = (curr_buffer[0] == 48) ? nil : Utils::Str.stringify(curr_buffer + 1, artist_buffer, artist_length.to_i32)
-
-    # Check the given title is non-blank and is within size limits
-    unless title.nil?
-      if title.blank?
-        context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << "Title cannot be blank"
-        return
-      end
-
-      if title.size > MAX_TITLE_LENGTH
-        context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << "Title cannot exceed 150 characters"
-        return
-      end
-    end
-
-    # Check the given artist is non-blank and is within size limits
-    unless artist.nil?
-      if artist.blank?
-        context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << "Artist cannot be blank"
-        return
-      end
-
-      if artist.size > MAX_ARTIST_LENGTH
-        context.response.status = HTTP::Status::BAD_REQUEST
-        context.response.output << "Artist cannot exceed 100 characters"
-        return
-      end
+    # Check at least one of these fields is updated
+    if title.size == 0 && artist.size == 0
+      context.response.status = HTTP::Status::BAD_REQUEST
+      context.response.output << "Both title and artist cannot be empty"
+      return
     end
 
     # Return validated data

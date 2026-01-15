@@ -14,6 +14,7 @@ require "./repositories/playlist_repository"
 require "./utils/pg/src/pg"
 require "./utils/env"
 require "./utils/config"
+require "./utils/reader"
 
 # Read CLI arguments
 case ARGV.size

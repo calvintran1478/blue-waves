@@ -43,7 +43,7 @@ const UpdateMusicModal = (props: { musicId: Accessor<string>, setMusicId: Setter
             },
             credentials: "omit",
             referrerPolicy: "no-referrer",
-            body: `${title !== originalTitle ? `1${title}` : "0"}\n${artist !== originalArtist ? `1${artist}` : "0"}`
+            body: `${title !== originalTitle ? `${title}` : ""}\n${artist !== originalArtist ? `${artist}` : ""}`
         });
 
         if (response.ok) {
