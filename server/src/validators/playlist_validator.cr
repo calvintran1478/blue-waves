@@ -1,22 +1,9 @@
 require "../utils/constants"
+require "../utils/buffer"
 
 module Validators::PlaylistValidator
   include Schemas::PlaylistSchemas
   include Utils::Constants
-
-  private def read_io_to_buffer(io : IO, buffer : UInt8*, limit : Int64) : Int64
-    curr_buffer = Bytes.new(buffer, limit)
-    remaining = limit
-    bytes_read = io.read(curr_buffer[0, Math.min(curr_buffer.size, Math.max(remaining, 0))])
-
-    while bytes_read > 0
-      remaining -= bytes_read
-      curr_buffer += bytes_read
-      bytes_read = io.read(curr_buffer[0, Math.min(curr_buffer.size, Math.max(remaining, 0))])
-    end
-
-    limit - remaining
-  end
 
   def validate_add_playlist_request(context : HTTP::Server::Context, add_playlist_request_buffer : UInt8*) : (AddPlaylistRequest | Nil)
     # Get request body
@@ -27,21 +14,16 @@ module Validators::PlaylistValidator
     request_body = context.request.body.as(IO)
 
     # Read playlist name bytes
-    playlist_name_buffer = add_playlist_request_buffer.as(String).to_unsafe
-    playlist_name_bytesize = read_io_to_buffer(request_body, playlist_name_buffer, MAX_PLAYLIST_NAME_LENGTH + 1).to_i32
+    playlist_name_bytesize = Utils::Buffer.read_io_to_buffer(request_body, add_playlist_request_buffer, MAX_PLAYLIST_NAME_LENGTH + 1).to_i32
     if playlist_name_bytesize > MAX_PLAYLIST_NAME_LENGTH
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Playlist name cannot exceed 80 characters"
       return
     end
-
-    # Initialize playlist name
-    playlist_name_buffer[playlist_name_bytesize] = 0_u8
-    playlist_name = add_playlist_request_buffer.as(String)
-    playlist_name.initialize_header(playlist_name_bytesize, playlist_name_bytesize)
+    playlist_name = Bytes.new(add_playlist_request_buffer, playlist_name_bytesize)
 
     # Check playlist name is not blank
-    if playlist_name.blank?
+    if Utils::Buffer.blank?(playlist_name)
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Playlist name cannot be blank"
       return
@@ -57,9 +39,15 @@ module Validators::PlaylistValidator
       return
     end
     request_body = context.request.body.as(IO)
+    peek = request_body.peek
+
+    # Optimization: Check if we have a peek buffer
+    if !peek.nil? && peek.size == MUSIC_ID_LENGTH
+      return AddPlaylistMusicRequest.new(peek)
+    end
 
     # Read music id bytes
-    music_id_bytesize = read_io_to_buffer(request_body, add_playlist_music_request_buffer, MUSIC_ID_LENGTH + 1).to_i32
+    music_id_bytesize = Utils::Buffer.read_io_to_buffer(request_body, add_playlist_music_request_buffer, MUSIC_ID_LENGTH + 1).to_i32
     if music_id_bytesize != MUSIC_ID_LENGTH
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "Music not found"
@@ -78,21 +66,16 @@ module Validators::PlaylistValidator
     request_body = context.request.body.as(IO)
 
     # Read playlist name bytes
-    playlist_name_buffer = update_playlist_request_buffer.as(String).to_unsafe
-    playlist_name_bytesize = read_io_to_buffer(request_body, playlist_name_buffer, MAX_PLAYLIST_NAME_LENGTH + 1).to_i32
+    playlist_name_bytesize = Utils::Buffer.read_io_to_buffer(request_body, update_playlist_request_buffer, MAX_PLAYLIST_NAME_LENGTH + 1).to_i32
     if playlist_name_bytesize > MAX_PLAYLIST_NAME_LENGTH
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Playlist name cannot exceed 80 characters"
       return
     end
-
-    # Initialize playlist name
-    playlist_name_buffer[playlist_name_bytesize] = 0_u8
-    playlist_name = update_playlist_request_buffer.as(String)
-    playlist_name.initialize_header(playlist_name_bytesize, playlist_name_bytesize)
+    playlist_name = Bytes.new(update_playlist_request_buffer, playlist_name_bytesize)
 
     # Check playlist name is not blank
-    if playlist_name.blank?
+    if Utils::Buffer.blank?(playlist_name)
       context.response.status = HTTP::Status::BAD_REQUEST
       context.response.output << "Playlist name cannot be blank"
       return

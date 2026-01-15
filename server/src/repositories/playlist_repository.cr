@@ -58,7 +58,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.exists_by_name_excluding_id("user_id", "playlist_name", "playlist_id") # => true if user with "user_id" has a playlist with "playlist_name" in their collection (excluding the chosen playlist id)
   # ```
-  def exists_by_name_excluding_id(user_id : Bytes, playlist_name : String, excluded_playlist_id : Bytes) : Bool
+  def exists_by_name_excluding_id(user_id : Bytes, playlist_name : Bytes, excluded_playlist_id : Bytes) : Bool
     @db.query_one "SELECT EXISTS(SELECT 1 FROM playlists WHERE user_id=$1 AND name=$2 AND playlist_id<>$3)", user_id, playlist_name, excluded_playlist_id do |rs|
       rs.read { |io, _| io.read_byte == 1 }
     end
@@ -70,7 +70,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.create("user_id", "playlist_name") # => "<Playlist_ID>" if a playlist with the given name does not already exist in the user's collection
   # ```
-  def create(user_id : Bytes, playlist_name : String) : (String | Nil)
+  def create(user_id : Bytes, playlist_name : Bytes) : (String | Nil)
     playlist_id = Random::Secure.urlsafe_base64
     result = @db.exec "INSERT INTO playlists (playlist_id, name, user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO NOTHING", playlist_id, playlist_name, user_id
 
@@ -145,7 +145,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   # playlist_repository.update("user_id", "playlist_id", "playlist_name") # => true if update was successful
   # ```
-  def update(user_id : Bytes, playlist_id : Bytes, playlist_name : String) : Bool
+  def update(user_id : Bytes, playlist_id : Bytes, playlist_name : Bytes) : Bool
     result = @db.exec "UPDATE playlists SET name=$3 WHERE user_id=$1 AND playlist_id=$2", user_id, playlist_id, playlist_name
 
     result.rows_affected != 0

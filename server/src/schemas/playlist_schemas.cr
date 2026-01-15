@@ -5,9 +5,9 @@ module Schemas::PlaylistSchemas
   # name is expected to be non-blank
   struct AddPlaylistRequest
 
-    getter playlist_name : String
+    getter playlist_name : Bytes
 
-    def initialize(@playlist_name : String)
+    def initialize(@playlist_name : Bytes)
     end
   end
 
@@ -25,9 +25,9 @@ module Schemas::PlaylistSchemas
   # name is expected to be non-blank
   struct UpdatePlaylistRequest
 
-    getter playlist_name : String
+    getter playlist_name : Bytes
 
-    def initialize(@playlist_name : String)
+    def initialize(@playlist_name : Bytes)
     end
   end
 
