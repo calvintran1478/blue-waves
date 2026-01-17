@@ -31,6 +31,7 @@ function MusicPlayerStateProvider(props: any) {
     const [musicPlayerState, setMusicPlayerState] = createStore({
         musicList: [{"title": "", "artist": "", "music_id": ""}],
         musicIndex: 0,
+        update: false,
         showMusicPlayer: false
     });
 

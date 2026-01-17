@@ -11,6 +11,9 @@ import prevSvg from "../assets/prev.svg";
 import nextSvg from "../assets/next.svg";
 
 const MusicPlayer = () => {
+    const [musicTitle, setMusicTitle] = createSignal("");
+    const [musicArtist, setMusicArtist] = createSignal("");
+
     const [musicFile, setMusicFile] = createSignal("");
     const [coverArtFile, setCoverArtFile] = createSignal("");
 
@@ -24,11 +27,7 @@ const MusicPlayer = () => {
     
     const [token, setToken] = useContext(AuthContext) as Signal<string>;
     const [store, setStore] = useContext(MusicPlayerStateContext) as Store<any>;
-
-    const musicId = () => store.musicList[store.musicIndex]["music_id"] // Derived signal
-    const musicTitle = () => store.musicList[store.musicIndex]["title"] // Derived signal
-    const musicArtist = () => store.musicList[store.musicIndex]["artist"] // Derived signal
-
+   
     let previousVolume = "0";
     let audioPlayer!: HTMLAudioElement;
     let seekControl!: HTMLInputElement;
@@ -160,9 +159,17 @@ const MusicPlayer = () => {
 
     // Fetch music and cover art file whenever musid id updates and update document title
     createEffect(() => {
-        if (musicId() !== "") {
-            fetchMusicFile(musicId()).then((mf) => setMusicFile(mf as string));
-            fetchCoverArtFile(musicId()).then((af) => setCoverArtFile(af as string));
+        if (store.update) {
+            // Update signal values
+            setMusicTitle(store.musicList[store.musicIndex]["title"]);
+            setMusicArtist(store.musicList[store.musicIndex]["artist"]);
+
+            // Fetch music and cover art
+            const musicId = store.musicList[store.musicIndex]["music_id"]           
+            fetchMusicFile(musicId).then((mf) => setMusicFile(mf as string));
+            fetchCoverArtFile(musicId).then((af) => setCoverArtFile(af as string));
+
+            // Resume player and update document title
             setPlaying(true);
             document.title = `${musicTitle()} - Blue waves`;
         }

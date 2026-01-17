@@ -197,6 +197,14 @@ const PlaylistPage = () => {
 
     const [playlistMusic, modifyPlaylistMusic] = createResource(fetchPlaylist);
 
+    const updateMusicPlayer = (index: number) => {
+        setMusicPlayerState("update", false);
+        setMusicPlayerState("showMusicPlayer", true);
+        setMusicPlayerState("musicList", playlistMusic());
+        setMusicPlayerState("musicIndex", index);
+        setMusicPlayerState("update", true);
+    }
+
     return (
         <div class="flex flex-row-reverse">
             <div class={`flex flex-col w-1/5 ${musicPlayerState.showMusicPlayer ? "h-[calc(100vh-5rem)]" : "h-screen"} border-r-2 fixed left-0`}>
@@ -218,7 +226,7 @@ const PlaylistPage = () => {
                         {(musicEntry, index) => (
                             <div>
                                 <Show when={!editMode()}>
-                                    <button class="flex flex-col justify-center items-start h-16 w-full my-2 border-2" onClick={() => {setMusicPlayerState("showMusicPlayer", true); setMusicPlayerState("musicList", playlistMusic()); setMusicPlayerState("musicIndex", index)}}>
+                                    <button class="flex flex-col justify-center items-start h-16 w-full my-2 border-2" onClick={() => updateMusicPlayer(index())}>
                                         <h2 class="text-lg font-semibold">{musicEntry["title"]}</h2>
                                         <h3 class="text-lg">{musicEntry["artist"]}</h3>
                                     </button>
