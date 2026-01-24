@@ -18,17 +18,6 @@ class Repositories::UserRepository < Repositories::Repository
     end
   end
 
-  # Returns whether a user with the given id exists.
-  #
-  # ```
-  # user_repository.exists_by_id("user_id") # => true if user_id exists in the database
-  # ```
-  def exists_by_id(user_id : String) : Bool
-    @db.query_one "SELECT EXISTS(SELECT 1 FROM users WHERE user_id=$1)", user_id do |rs|
-      rs.read { |io, _| io.read_byte == 1 }
-    end
-  end
-
   # Adds a user to the database.
   #
   # ```
