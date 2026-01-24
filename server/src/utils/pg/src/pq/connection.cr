@@ -477,7 +477,7 @@ module PQ
       write_null
     end
 
-    def send_bind_message(params : Enumerable(Bytes) | Tuple())
+    def send_bind_message(params : Enumerable(Bytes))
       nparams = params.size
       total_size = 4 * nparams
       params.each do |param|

@@ -7,24 +7,16 @@ class PG::Statement < ::DB::Statement
     connection.as(Connection).connection
   end
 
-  protected def perform_query(args : Enumerable) : ResultSet
-    params = args.map do |arg|
-      case arg
-      when Bytes
-        arg
-      else
-        arg.to_s.to_slice
-      end
-    end
-
+  protected def perform_query(args : Enumerable(Bytes)) : ResultSet
     conn = self.conn
     conn.send_parse_message(command)
-    conn.send_bind_message(params)
+    conn.send_bind_message(args)
     conn.send_describe_portal_message
     conn.send_execute_message
     conn.send_sync_message
     conn.expect_frame PQ::Frame::ParseComplete
     conn.expect_frame PQ::Frame::BindComplete
+
     frame = conn.read
     case frame
     when PQ::Frame::RowDescription
@@ -37,6 +29,11 @@ class PG::Statement < ::DB::Statement
     ResultSet.new(self, fields)
   rescue e : IO::Error
     raise DB::ConnectionLost.new(connection, cause: e)
+  end
+
+  protected def perform_query(args : Enumerable) : ResultSet
+    puts "Expect DB arguments to be bytes"
+    exit 1
   end
 
   protected def perform_exec(args : Enumerable) : ::DB::ExecResult

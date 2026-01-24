@@ -70,7 +70,7 @@ struct Controllers::UserController < Controllers::Controller
     return if data.nil?
 
     # Check if a user with the given email already exists
-    user_exists = @user_repository.exists_by_email(data.email)
+    user_exists = @user_repository.exists_by_email(data.email.to_slice)
     if user_exists
       context.response.status = HTTP::Status::CONFLICT
       context.response.output << "User with email already exists"
@@ -78,10 +78,10 @@ struct Controllers::UserController < Controllers::Controller
     end
 
     # Hash password
-    hashed_password = Crypto::Bcrypt::Password.create data.password, @BCRYPT_COST
+    hashed_password = Crypto::Bcrypt::Password.create(data.password, @BCRYPT_COST).to_s
 
     # Register user into the database
-    @user_repository.create(data.email, hashed_password, data.first_name, data.last_name)
+    @user_repository.create(data.email.to_slice, hashed_password.to_slice, data.first_name.to_slice, data.last_name.to_slice)
 
     # Send success response
     context.response.content_type = "application/json"
@@ -106,7 +106,7 @@ struct Controllers::UserController < Controllers::Controller
 
     # Look up user in database
     password_buffer = uninitialized UInt8[PASSWORD_HASH_STRING_LENGTH]
-    user_id, password_hash = @user_repository.get_login_password(data.email, password_buffer.to_unsafe)
+    user_id, password_hash = @user_repository.get_login_password(data.email.to_slice, password_buffer.to_unsafe)
     if user_id == ""
       context.response.status = HTTP::Status::NOT_FOUND
       context.response.output << "User with email not found"

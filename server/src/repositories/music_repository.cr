@@ -36,7 +36,7 @@ class Repositories::MusicRepository < Repositories::Repository
     @db.transaction do |tx|
       # Store metadata about the music file
       music_id = Random::Secure.urlsafe_base64
-      tx.connection.exec "INSERT INTO music (music_id, title, artist, user_id) VALUES ($1, $2, $3, $4)", music_id, title, artist, user_id
+      tx.connection.exec "INSERT INTO music (music_id, title, artist, user_id) VALUES ($1, $2, $3, $4)", music_id.to_slice, title, artist, user_id
 
       # Create object id for music file
       object_id_buffer = uninitialized UInt8[COVER_ART_ID_STRING_LENGTH]

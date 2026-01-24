@@ -7,12 +7,13 @@ require "./repository"
 # Contains a set of methods for working with the user table. All queries made to the
 # user table should be made though a UserRepository object.
 class Repositories::UserRepository < Repositories::Repository
+
   # Returns whether a user with the given email exists.
   #
   # ```
   # user_repository.exists_by_email("user@email.com") # => true if user@email.com exists in the database
   # ```
-  def exists_by_email(email : String) : Bool
+  def exists_by_email(email : Bytes) : Bool
     @db.query_one "SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", email do |rs|
       rs.read { |io, _| io.read_byte == 1 }
     end
@@ -23,8 +24,10 @@ class Repositories::UserRepository < Repositories::Repository
   # ```
   # user_repository.create("user@email.com", "hashed_password", "first_name", "last_name")
   # ```
-  def create(email : String, password : Crypto::Bcrypt::Password, first_name : String, last_name : String) : Nil
-    @db.exec "INSERT INTO users (user_id, email, password, first_name, last_name) VALUES ($1, $2, $3, $4, $5)", UUID.v4(), email, password, first_name, last_name
+  def create(email : Bytes, password : Bytes, first_name : Bytes, last_name : Bytes) : Nil
+    user_id = UUID.v4.to_s
+
+    @db.exec "INSERT INTO users (user_id, email, password, first_name, last_name) VALUES ($1, $2, $3, $4, $5)", user_id.to_slice, email, password, first_name, last_name
   end
 
   # Returns the hashed password of a user along with their id.
@@ -32,7 +35,7 @@ class Repositories::UserRepository < Repositories::Repository
   # ```
   # user_repository.get_login_password("user@email.com") # => "user_id", "hashed_password"
   # ```
-  def get_login_password(email : String, password_buffer : UInt8*) : Tuple(String, String)
+  def get_login_password(email : Bytes, password_buffer : UInt8*) : Tuple(String, String)
     user_id, password_hash = "", ""
     @db.query "SELECT user_id, password FROM users WHERE email=$1", email do |rs|
       rs.each do

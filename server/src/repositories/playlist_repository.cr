@@ -72,7 +72,7 @@ class Repositories::PlaylistRepository < Repositories::Repository
   # ```
   def create(user_id : Bytes, playlist_name : Bytes) : (String | Nil)
     playlist_id = Random::Secure.urlsafe_base64
-    result = @db.exec "INSERT INTO playlists (playlist_id, name, user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO NOTHING", playlist_id, playlist_name, user_id
+    result = @db.exec "INSERT INTO playlists (playlist_id, name, user_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO NOTHING", playlist_id.to_slice, playlist_name, user_id
 
     return playlist_id if result.rows_affected == 1
   end
@@ -285,7 +285,8 @@ class Repositories::PlaylistRepository < Repositories::Repository
         else
           (music_numbers_ptr[music_number - 2] + music_numbers_ptr[music_number - 1]) >> 1
         end
-        cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", new_music_number, user_id, playlist_id, music_id
+        new_music_number_str = new_music_number.to_s
+        cnn.exec "UPDATE playlist_music SET music_number=$1 WHERE user_id=$2 AND playlist_id=$3 AND music_id=$4", new_music_number_str.to_slice, user_id, playlist_id, music_id
 
         context.response.status = HTTP::Status::NO_CONTENT
       end
